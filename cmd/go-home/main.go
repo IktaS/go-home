@@ -8,12 +8,18 @@ import (
 
 	"github.com/IktaS/go-home/internal/auth"
 	"github.com/IktaS/go-home/internal/device"
+	"github.com/IktaS/go-home/internal/store"
 	"github.com/gorilla/mux"
 )
 
 //HomeHandler handles home
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Works")
+}
+
+// App devices what the app have
+type App struct {
+	Devices store.Repo
 }
 
 /*
@@ -29,7 +35,7 @@ type NewConnection struct {
 }
 
 //ConnectHandler handles a device connecting to Hub
-func ConnectHandler(w http.ResponseWriter, r *http.Request) {
+func ConnectHandler(w http.ResponseWriter, r *http.Request, a App) {
 	var newconn NewConnection
 	err := json.NewDecoder(r.Body).Decode(&newconn)
 	if err != nil {
@@ -47,11 +53,27 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	ip := net.ParseIP(r.RemoteAddr)
 	addr := &net.IPAddr{IP: ip, Zone: ""}
-	device.NewDevice(addr, DecompServ)
+	dev, err := device.NewDevice(addr, DecompServ)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	err = a.Devices.Save(dev)
+	if err != nil {
+		http.Error(w, "Error Saving New Device", http.StatusInternalServerError)
+		return
+	}
+}
+
+func appHandlerWrapper(f func(http.ResponseWriter, *http.Request, App), a App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		f(w, r, a)
+	}
 }
 
 func main() {
+	app := App{}
 	r := mux.NewRouter()
 	r.HandleFunc("/", HomeHandler)
-	r.HandleFunc("/connect", ConnectHandler)
+	r.HandleFunc("/connect", appHandlerWrapper(ConnectHandler, app))
 }
