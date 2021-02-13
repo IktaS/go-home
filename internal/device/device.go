@@ -22,13 +22,14 @@ func readService(input []byte) (*serv.Serv, error) {
 // Device defines a device id, and it's respective message and services
 type Device struct {
 	ID       uuid.UUID
+	Name     string
 	Addr     net.Addr
 	Services []serv.Service
 	Messages []serv.Message
 }
 
 // NewDevice creates a new device by accepting a service definiton
-func NewDevice(address net.Addr, s []byte) (*Device, error) {
+func NewDevice(name string, address net.Addr, s []byte) (*Device, error) {
 	srv, err := readService(s)
 	if err != nil {
 		return nil, err
@@ -44,6 +45,7 @@ func NewDevice(address net.Addr, s []byte) (*Device, error) {
 	}
 	dev := &Device{
 		ID:       uuid.New(),
+		Name:     name,
 		Addr:     address,
 		Services: services,
 		Messages: messages,

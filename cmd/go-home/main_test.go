@@ -9,7 +9,7 @@ func TestConnectHandler(t *testing.T) {
 	type args struct {
 		w http.ResponseWriter
 		r *http.Request
-		a App
+		a *App
 	}
 	tests := []struct {
 		name string

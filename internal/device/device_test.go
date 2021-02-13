@@ -11,12 +11,14 @@ import (
 func TestNewDevice(t *testing.T) {
 	tests := []struct {
 		Name     string
+		DevName  string
 		input    []byte
 		expected *Device
 		WantErr  bool
 	}{
 		{
-			Name: "Default test",
+			Name:    "Default test",
+			DevName: "Device1",
 			input: []byte(`
 				message TestMessage{string TestString;};service TestService(TestMessage):string;
 			`),
@@ -56,7 +58,8 @@ func TestNewDevice(t *testing.T) {
 			},
 		},
 		{
-			Name: "One Message",
+			Name:    "One Message",
+			DevName: "Device1",
 			input: []byte(`
 				message TestMessage{string TestString;};
 			`),
@@ -89,7 +92,7 @@ func TestNewDevice(t *testing.T) {
 				IP:   net.IPv4(127, 0, 0, 1),
 				Port: 80,
 			}
-			dev, err := NewDevice(addr, tt.input)
+			dev, err := NewDevice(tt.DevName, addr, tt.input)
 			if tt.WantErr {
 				assert.Error(t, err)
 			}
