@@ -21,6 +21,7 @@ func TestPostgreSQLStore_Save(t *testing.T) {
 		setup    func(*testing.T) (*Store, sqlmock.Sqlmock, *sql.DB)
 		teardown func(*testing.T, *sql.DB)
 		input    *device.Device
+		expect   func(sqlmock.Sqlmock)
 		wantErr  bool
 	}{
 		{
@@ -36,8 +37,6 @@ func TestPostgreSQLStore_Save(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-
-				//TODO: add expectations
 
 				r := &Store{
 					DB: gdb,
@@ -82,6 +81,10 @@ func TestPostgreSQLStore_Save(t *testing.T) {
 						},
 					},
 				},
+			},
+			expect: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectClose()
 			},
 			wantErr: false,
 		},

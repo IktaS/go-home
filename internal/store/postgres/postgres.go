@@ -13,11 +13,16 @@ import (
 
 // DeviceModel defines a model for the Device struct for use with gorm
 type DeviceModel struct {
-	DeviceID uuid.UUID `gorm:"column:id;primary_key"`
+	ID       uuid.UUID `gorm:"column:id;primary_key"`
 	Name     string
 	Addr     string
 	Services []*ServiceModel
 	Messages []*MessageModel
+}
+
+// TableName override table name
+func (DeviceModel) TableName() string {
+	return "devices"
 }
 
 // ServiceModel defines a model for the Service struct for use with gorm
@@ -28,11 +33,21 @@ type ServiceModel struct {
 	Response *TypeModel
 }
 
+// TableName override table name
+func (ServiceModel) TableName() string {
+	return "services"
+}
+
 // MessageModel defines a model for the Message struct for use with gorm
 type MessageModel struct {
 	gorm.Model
 	Name        string
 	Definitions []*MessageDefinitionModel
+}
+
+// TableName override table name
+func (MessageModel) TableName() string {
+	return "messages"
 }
 
 // MessageDefinitionModel defines a model for the MessageDefinition struct for use with gorm
@@ -44,11 +59,21 @@ type MessageDefinitionModel struct {
 	Type       *TypeModel
 }
 
+// TableName override table name
+func (MessageDefinitionModel) TableName() string {
+	return "message_definitions"
+}
+
 // TypeModel defines a model for the Type struct for use with gorm
 type TypeModel struct {
 	gorm.Model
 	IsScalar  bool
 	TypeValue string
+}
+
+// TableName override table name
+func (TypeModel) TableName() string {
+	return "types"
 }
 
 //Store defines what the Postgre SQL Store needs
@@ -185,7 +210,7 @@ func deviceToModel(d *device.Device) *DeviceModel {
 	messages := messagesToModel(d.Messages)
 
 	return &DeviceModel{
-		DeviceID: d.ID,
+		ID:       d.ID,
 		Name:     d.Name,
 		Addr:     d.Addr.String(),
 		Services: services,
@@ -200,7 +225,7 @@ func modelToDevice(model *DeviceModel) *device.Device {
 	ip := net.ParseIP(model.Addr)
 	addr := &net.IPAddr{IP: ip, Zone: ""}
 	return &device.Device{
-		ID:       model.DeviceID,
+		ID:       model.ID,
 		Name:     model.Name,
 		Addr:     addr,
 		Services: services,
