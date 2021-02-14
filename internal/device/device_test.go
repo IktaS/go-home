@@ -27,7 +27,7 @@ func TestNewDevice(t *testing.T) {
 					IP:   net.IPv4(127, 0, 0, 1),
 					Port: 80,
 				},
-				Services: []serv.Service{
+				Services: []*serv.Service{
 					{
 						Name: "TestService",
 						Request: []*serv.Type{
@@ -40,7 +40,7 @@ func TestNewDevice(t *testing.T) {
 						},
 					},
 				},
-				Messages: []serv.Message{
+				Messages: []*serv.Message{
 					{
 						Name: "TestMessage",
 						Definitions: []*serv.MessageDefinition{
@@ -68,7 +68,7 @@ func TestNewDevice(t *testing.T) {
 					IP:   net.IPv4(127, 0, 0, 1),
 					Port: 80,
 				},
-				Messages: []serv.Message{
+				Messages: []*serv.Message{
 					{
 						Name: "TestMessage",
 						Definitions: []*serv.MessageDefinition{

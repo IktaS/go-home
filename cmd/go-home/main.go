@@ -9,6 +9,7 @@ import (
 	"github.com/IktaS/go-home/internal/auth"
 	"github.com/IktaS/go-home/internal/device"
 	"github.com/IktaS/go-home/internal/store"
+	"github.com/IktaS/go-home/internal/store/postgres"
 	"github.com/gorilla/mux"
 )
 
@@ -81,7 +82,7 @@ func appHandlerWrapper(f func(http.ResponseWriter, *http.Request, *App), a *App)
 }
 
 func main() {
-	repo, err := store.NewPostgreSQLStore("")
+	repo, err := postgres.NewPostgreSQLStore("")
 	if err != nil {
 		panic(err)
 	}

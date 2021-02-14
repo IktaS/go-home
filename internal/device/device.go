@@ -24,8 +24,8 @@ type Device struct {
 	ID       uuid.UUID
 	Name     string
 	Addr     net.Addr
-	Services []serv.Service
-	Messages []serv.Message
+	Services []*serv.Service
+	Messages []*serv.Message
 }
 
 // NewDevice creates a new device by accepting a service definiton
@@ -34,13 +34,13 @@ func NewDevice(name string, address net.Addr, s []byte) (*Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	var services []serv.Service
-	var messages []serv.Message
+	var services []*serv.Service
+	var messages []*serv.Message
 	for _, def := range srv.Definitions {
 		if def.Message == nil {
-			services = append(services, *def.Service)
+			services = append(services, def.Service)
 		} else {
-			messages = append(messages, *def.Message)
+			messages = append(messages, def.Message)
 		}
 	}
 	dev := &Device{
