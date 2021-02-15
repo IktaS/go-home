@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/IktaS/go-home/internal/device"
-	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 //Store defines what the Postgre SQL Store needs
@@ -48,7 +48,115 @@ func (p *Store) Init() error {
 
 	//TODO: Code to create tables
 
-	return err
+	//enable foreign key
+	statement, err := db.Prepare(`PRAGMA foreign_keys = ON;`)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec()
+
+	// Create Devices Table
+	createDevicesTableSQL := `CREATE TABLE [IF NOT EXISTS] devices(
+		"id" TEXT NOT NULL PRIMARY KEY,
+		"name" TEXT,
+		"addr" TEXT,
+	);`
+
+	statement, err = db.Prepare(createDevicesTableSQL)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec()
+
+	// Create ServiceResponse Table
+	createServiceResponseTableSQL := `CREATE TABLE [IF NOT EXISTS] service_response(
+		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		"is_scalar" INTEGER,
+		"value" TEXT,
+	);`
+
+	statement, err = db.Prepare(createServiceResponseTableSQL)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec()
+
+	// Create Services Table
+	createServicesTableSQL := `CREATE TABLE [IF NOT EXISTS] services(
+		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		"device_id" TEXT NOT NULL,
+		"name" TEXT,
+		"response_id" int NOT NULL,
+		FOREIGN KEY (device_id) REFERENCES devices (id),
+		FOREIGN KEY (response_id) REFERENCES service_response (id)
+	);`
+
+	statement, err = db.Prepare(createServicesTableSQL)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec()
+
+	// Create ServiceRequest Table
+	createServiceRequestTableSQL := `CREATE TABLE [IF NOT EXISTS] service_request(
+		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		"service_id" INTEGER NOT NULL,
+		"is_scalar" INTEGER,
+		"value" TEXT,
+	);`
+
+	statement, err = db.Prepare(createServiceRequestTableSQL)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec()
+
+	// Create Messages Table
+	createMessagesTableSQL := `CREATE TABLE [IF NOT EXISTS] messages(
+		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		"device_id" TEXT NOT NULL,
+		"name" TEXT,
+		FOREIGN KEY (device_id) REFERENCES devices (id),
+	);`
+
+	statement, err = db.Prepare(createMessagesTableSQL)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec()
+
+	// Create MessageDefinitions Table
+	createMessageDefinitionsTableSQL := `CREATE TABLE [IF NOT EXISTS] message_definitions(
+		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		"message_id" TEXT NOT NULL,
+		"name" TEXT,
+		"is_optional" INTEGER,
+		"is_required" INTEGER,
+		FOREIGN KEY (message_id) REFERENCES messages (id),
+	);`
+
+	statement, err = db.Prepare(createMessageDefinitionsTableSQL)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec()
+
+	// Create MessageDefinitionFields Table
+	createMessageDefinitionFieldsTableSQL := `CREATE TABLE [IF NOT EXISTS] message_definition_fields(
+		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		"message_definition_id" TEXT NOT NULL,
+		"is_scalar" INTEGER,
+		"value" TEXT,
+		FOREIGN KEY (message_definition_id) REFERENCES message_definitions (id),
+	);`
+
+	statement, err = db.Prepare(createMessageDefinitionFieldsTableSQL)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	statement.Exec()
+
+	return nil
 }
 
 // Save saves a device to the postgreSQL store
