@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/IktaS/go-home/internal/device"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // import sqlite3 driver
 )
 
 //Store defines what the Postgre SQL Store needs
@@ -15,9 +15,9 @@ type Store struct {
 	FileName string
 }
 
-// NewPostgreSQLStore makes a new PostgreSQL Store
-func NewSQLiteStore(dsn string) (*Store, error) {
-	p := &Store{FileName: dsn}
+// NewSQLiteStore makes a new SQLite Store
+func NewSQLiteStore(filename string) (*Store, error) {
+	p := &Store{FileName: filename}
 	err := p.Init()
 	if err != nil {
 		return nil, err
@@ -34,14 +34,14 @@ func (p *Store) Init() error {
 		// sqlite_database.db does *not* exist
 		file, err := os.Create(p.FileName)
 		if err != nil {
-			log.Fatal(err.Error())
+			return err
 		}
 		file.Close()
 	} else {
 		// Schrodinger: file may or may not exist. See err for details.
 
 		// Therefore, do *NOT* use !os.IsNotExist(err) to test for file existence
-		log.Fatal(err.Error())
+		return err
 	}
 	db, err := sql.Open("sqlite3", "./"+p.FileName)
 	defer db.Close()
@@ -51,38 +51,38 @@ func (p *Store) Init() error {
 	//enable foreign key
 	statement, err := db.Prepare(`PRAGMA foreign_keys = ON;`)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	statement.Exec()
 
 	// Create Devices Table
-	createDevicesTableSQL := `CREATE TABLE [IF NOT EXISTS] devices(
+	createDevicesTableSQL := `CREATE TABLE IF NOT EXISTS devices(
 		"id" TEXT NOT NULL PRIMARY KEY,
 		"name" TEXT,
-		"addr" TEXT,
+		"addr" TEXT
 	);`
 
 	statement, err = db.Prepare(createDevicesTableSQL)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	statement.Exec()
 
 	// Create ServiceResponse Table
-	createServiceResponseTableSQL := `CREATE TABLE [IF NOT EXISTS] service_response(
+	createServiceResponseTableSQL := `CREATE TABLE IF NOT EXISTS service_response(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"is_scalar" INTEGER,
-		"value" TEXT,
+		"value" TEXT
 	);`
 
 	statement, err = db.Prepare(createServiceResponseTableSQL)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	statement.Exec()
 
 	// Create Services Table
-	createServicesTableSQL := `CREATE TABLE [IF NOT EXISTS] services(
+	createServicesTableSQL := `CREATE TABLE IF NOT EXISTS services(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"device_id" TEXT NOT NULL,
 		"name" TEXT,
@@ -93,66 +93,66 @@ func (p *Store) Init() error {
 
 	statement, err = db.Prepare(createServicesTableSQL)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	statement.Exec()
 
 	// Create ServiceRequest Table
-	createServiceRequestTableSQL := `CREATE TABLE [IF NOT EXISTS] service_request(
+	createServiceRequestTableSQL := `CREATE TABLE IF NOT EXISTS service_request(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"service_id" INTEGER NOT NULL,
 		"is_scalar" INTEGER,
-		"value" TEXT,
+		"value" TEXT
 	);`
 
 	statement, err = db.Prepare(createServiceRequestTableSQL)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	statement.Exec()
 
 	// Create Messages Table
-	createMessagesTableSQL := `CREATE TABLE [IF NOT EXISTS] messages(
+	createMessagesTableSQL := `CREATE TABLE IF NOT EXISTS messages(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"device_id" TEXT NOT NULL,
 		"name" TEXT,
-		FOREIGN KEY (device_id) REFERENCES devices (id),
+		FOREIGN KEY (device_id) REFERENCES devices (id)
 	);`
 
 	statement, err = db.Prepare(createMessagesTableSQL)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	statement.Exec()
 
 	// Create MessageDefinitions Table
-	createMessageDefinitionsTableSQL := `CREATE TABLE [IF NOT EXISTS] message_definitions(
+	createMessageDefinitionsTableSQL := `CREATE TABLE IF NOT EXISTS message_definitions(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"message_id" TEXT NOT NULL,
 		"name" TEXT,
 		"is_optional" INTEGER,
 		"is_required" INTEGER,
-		FOREIGN KEY (message_id) REFERENCES messages (id),
+		FOREIGN KEY (message_id) REFERENCES messages (id)
 	);`
 
 	statement, err = db.Prepare(createMessageDefinitionsTableSQL)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	statement.Exec()
 
 	// Create MessageDefinitionFields Table
-	createMessageDefinitionFieldsTableSQL := `CREATE TABLE [IF NOT EXISTS] message_definition_fields(
+	createMessageDefinitionFieldsTableSQL := `CREATE TABLE IF NOT EXISTS message_definition_fields(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"message_definition_id" TEXT NOT NULL,
 		"is_scalar" INTEGER,
 		"value" TEXT,
-		FOREIGN KEY (message_definition_id) REFERENCES message_definitions (id),
+		FOREIGN KEY (message_definition_id) REFERENCES message_definitions (id)
 	);`
 
 	statement, err = db.Prepare(createMessageDefinitionFieldsTableSQL)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	statement.Exec()
 
