@@ -3,10 +3,13 @@ package sqlite
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/IktaS/go-home/internal/device"
+	"github.com/IktaS/go-serv/pkg/serv"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3" // import sqlite3 driver
 )
 
@@ -53,7 +56,10 @@ func (p *Store) Init() error {
 	if err != nil {
 		return err
 	}
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
 
 	// Create Devices Table
 	createDevicesTableSQL := `CREATE TABLE IF NOT EXISTS devices(
@@ -66,7 +72,10 @@ func (p *Store) Init() error {
 	if err != nil {
 		return err
 	}
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
 
 	// Create ServiceResponse Table
 	createServiceResponseTableSQL := `CREATE TABLE IF NOT EXISTS service_response(
@@ -79,7 +88,10 @@ func (p *Store) Init() error {
 	if err != nil {
 		return err
 	}
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
 
 	// Create Services Table
 	createServicesTableSQL := `CREATE TABLE IF NOT EXISTS services(
@@ -95,7 +107,10 @@ func (p *Store) Init() error {
 	if err != nil {
 		return err
 	}
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
 
 	// Create ServiceRequest Table
 	createServiceRequestTableSQL := `CREATE TABLE IF NOT EXISTS service_request(
@@ -109,7 +124,10 @@ func (p *Store) Init() error {
 	if err != nil {
 		return err
 	}
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
 
 	// Create Messages Table
 	createMessagesTableSQL := `CREATE TABLE IF NOT EXISTS messages(
@@ -123,38 +141,31 @@ func (p *Store) Init() error {
 	if err != nil {
 		return err
 	}
-	statement.Exec()
-
-	// Create MessageDefinitions Table
-	createMessageDefinitionsTableSQL := `CREATE TABLE IF NOT EXISTS message_definitions(
-		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-		"message_id" TEXT NOT NULL,
-		"name" TEXT,
-		"is_optional" INTEGER,
-		"is_required" INTEGER,
-		FOREIGN KEY (message_id) REFERENCES messages (id)
-	);`
-
-	statement, err = db.Prepare(createMessageDefinitionsTableSQL)
+	_, err = statement.Exec()
 	if err != nil {
 		return err
 	}
-	statement.Exec()
 
 	// Create MessageDefinitionFields Table
 	createMessageDefinitionFieldsTableSQL := `CREATE TABLE IF NOT EXISTS message_definition_fields(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-		"message_definition_id" TEXT NOT NULL,
+		"message_id" TEXT NOT NULL,
+		"name" TEXT,
+		"is_optional" TEXT,
+		"is_required" TEXT,
 		"is_scalar" INTEGER,
 		"value" TEXT,
-		FOREIGN KEY (message_definition_id) REFERENCES message_definitions (id)
+		FOREIGN KEY (message_id) REFERENCES messages(id)
 	);`
 
 	statement, err = db.Prepare(createMessageDefinitionFieldsTableSQL)
 	if err != nil {
 		return err
 	}
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -166,7 +177,143 @@ func (p *Store) Save(d *device.Device) error {
 		return err
 	}
 	defer db.Close()
-	return errors.New("Not Implemented")
+
+	insertDeviceSQL := fmt.Sprintf("INSERT OR IGNORE INTO devices(id, name, addr) VALUES(%v,%v,%v);", d.ID.String(), d.Name, d.Addr.String())
+	statement, err := db.Prepare(insertDeviceSQL)
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
+	for _, m := range d.Messages {
+		err := insertMessage(db, d.ID, m)
+		if err != nil {
+			return err
+		}
+	}
+	for _, s := range d.Services {
+		err := insertService(db, d.ID, s)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func insertMessage(db *sql.DB, devID uuid.UUID, m *serv.Message) error {
+	insertMessageSQL := fmt.Sprintf("INSERT OR IGNORE INTO messages(device_id, name) VALUES(%v,%v);", devID.String(), m.Name)
+	statement, err := db.Prepare(insertMessageSQL)
+	if err != nil {
+		return err
+	}
+	row, err := statement.Exec()
+	if err != nil {
+		return err
+	}
+	messageID, err := row.LastInsertId()
+	if err != nil {
+		return err
+	}
+	for _, md := range m.Definitions {
+		if md.Field != nil {
+			err := insertMessageField(db, messageID, md.Field)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func insertMessageField(db *sql.DB, mesID int64, f *serv.Field) error {
+	isScalar, value := typeToDBModel(f.Type)
+	insertMesDefSQL := fmt.Sprintf(`INSERT OR IGNORE INTO services(message_id, name, is_optional, is_required, is_scalar, value) 
+									VALUES(%v,%v,%v,%v,%v,%v);`, mesID, f.Name, f.Optional, f.Required, isScalar, value)
+	statement, err := db.Prepare(insertMesDefSQL)
+	if err != nil {
+		return err
+	}
+	row, err := statement.Exec()
+	if err != nil {
+		return err
+	}
+	_, err = row.LastInsertId()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func insertService(db *sql.DB, devID uuid.UUID, s *serv.Service) error {
+	responseID, err := insertServiceResponse(db, s.Response)
+	if err != nil {
+		return err
+	}
+	insertServiceSQL := fmt.Sprintf("INSERT OR IGNORE INTO services(device_id, name, response_id) VALUES(%v,%v,%v);", devID.String(), s.Name, responseID)
+	statement, err := db.Prepare(insertServiceSQL)
+	if err != nil {
+		return err
+	}
+	row, err := statement.Exec()
+	if err != nil {
+		return err
+	}
+	serviceID, err := row.LastInsertId()
+	if err != nil {
+		return err
+	}
+	for _, r := range s.Request {
+		err := insertServiceRequest(db, serviceID, r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func typeToDBModel(t *serv.Type) (bool, string) {
+	isScalar := !(t.Reference == "")
+	var value string
+	if isScalar {
+		value = t.Scalar.String()
+	} else {
+		value = t.Reference
+	}
+	return isScalar, value
+}
+
+func insertServiceResponse(db *sql.DB, t *serv.Type) (int64, error) {
+	isScalar, value := typeToDBModel(t)
+	insertServiceResponseSQL := fmt.Sprintf("INSERT OR IGNORE INTO service_response(is_scalar, value) VALUES(%v,%v);", isScalar, value)
+	statement, err := db.Prepare(insertServiceResponseSQL)
+	if err != nil {
+		return -1, err
+	}
+	row, err := statement.Exec()
+	if err != nil {
+		return -1, err
+	}
+	id, err := row.LastInsertId()
+	if err != nil {
+		return -1, err
+	}
+	return id, nil
+}
+
+func insertServiceRequest(db *sql.DB, id int64, t *serv.Type) error {
+	isScalar, value := typeToDBModel(t)
+	insertServiceRequestSQL := fmt.Sprintf("INSERT OR IGNORE INTO service_request(service_id, is_scalar, value) VALUES(%v, %v,%v);", id, isScalar, value)
+	statement, err := db.Prepare(insertServiceRequestSQL)
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Get defines getting a device.Device
