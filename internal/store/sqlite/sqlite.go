@@ -16,26 +16,28 @@ import (
 //Store defines what the Postgre SQL Store needs
 type Store struct {
 	FileName string
+	DB       *sql.DB
 }
 
 // NewSQLiteStore makes a new SQLite Store
 func NewSQLiteStore(filename string) (*Store, error) {
-	p := &Store{FileName: filename}
-	err := p.Init()
+	p := &Store{}
+	err := p.Init(filename)
 	if err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
-// Init initialize a postgreSQL
-func (p *Store) Init() error {
-	if _, err := os.Stat(p.FileName); err == nil {
-		// sqlite_database.db exists
+// Init initialize a SQLite
+func (p *Store) Init(config interface{}) error {
+	filename := config.(string)
+	if _, err := os.Stat(filename); err == nil {
+		// database exists
 		log.Println("Database exist, skipped making database file")
 	} else if os.IsNotExist(err) {
-		// sqlite_database.db does *not* exist
-		file, err := os.Create(p.FileName)
+		// database does not exist
+		file, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
@@ -46,10 +48,14 @@ func (p *Store) Init() error {
 		// Therefore, do *NOT* use !os.IsNotExist(err) to test for file existence
 		return err
 	}
-	db, err := sql.Open("sqlite3", "./"+p.FileName)
-	defer db.Close()
-
-	//TODO: Code to create tables
+	db, err := sql.Open("sqlite3", "./"+filename)
+	if err != nil {
+		return err
+	}
+	err = db.Ping()
+	if err != nil {
+		return err
+	}
 
 	//enable foreign key
 	statement, err := db.Prepare(`PRAGMA foreign_keys = ON;`)
@@ -170,13 +176,9 @@ func (p *Store) Init() error {
 	return nil
 }
 
-// Save saves a device to the postgreSQL store
+// Save saves a device to the SQLite store
 func (p *Store) Save(d *device.Device) error {
-	db, err := sql.Open("sqlite3", "./"+p.FileName)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
+	db := p.DB
 
 	insertDeviceSQL := fmt.Sprintf("INSERT OR IGNORE INTO devices(id, name, addr) VALUES(%v,%v,%v);", d.ID.String(), d.Name, d.Addr.String())
 	statement, err := db.Prepare(insertDeviceSQL)
@@ -318,30 +320,15 @@ func insertServiceRequest(db *sql.DB, id int64, t *serv.Type) error {
 
 // Get defines getting a device.Device
 func (p *Store) Get(id interface{}) (*device.Device, error) {
-	db, err := sql.Open("sqlite3", "./"+p.FileName)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
 	return nil, errors.New("Not Implemented")
 }
 
 // GetAll gets all device
 func (p *Store) GetAll() ([]*device.Device, error) {
-	db, err := sql.Open("sqlite3", "./"+p.FileName)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
 	return nil, errors.New("Not Implemented")
 }
 
 // Delete defines getting a device.Device
 func (p *Store) Delete(id interface{}) error {
-	db, err := sql.Open("sqlite3", "./"+p.FileName)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
 	return errors.New("Not Implemented")
 }
