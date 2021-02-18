@@ -231,7 +231,7 @@ func insertMessage(db *sql.DB, devID uuid.UUID, m *serv.Message) error {
 
 func insertMessageField(db *sql.DB, mesID int64, f *serv.Field) error {
 	isScalar, value := typeToDBModel(f.Type)
-	insertMesDefSQL := fmt.Sprintf(`INSERT OR IGNORE INTO services(message_id, name, is_optional, is_required, is_scalar, value) 
+	insertMesDefSQL := fmt.Sprintf(`INSERT OR IGNORE INTO message_definition_fields(message_id, name, is_optional, is_required, is_scalar, value) 
 									VALUES(%v,%v,%v,%v,%v,%v);`, mesID, f.Name, f.Optional, f.Required, isScalar, value)
 	statement, err := db.Prepare(insertMesDefSQL)
 	if err != nil {
