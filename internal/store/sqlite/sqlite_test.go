@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -114,28 +115,28 @@ func TestStore_Save(t *testing.T) {
 				mock.ExpectBegin()
 
 				mock.ExpectExec(
-					fmt.Sprintf("INSERT OR IGNORE INTO devices(id, name, addr) VALUES(%v,%v,%v);", d.ID.String(), d.Name, d.Addr.String()),
+					regexp.QuoteMeta(fmt.Sprintf("INSERT OR IGNORE INTO devices(id, name, addr) VALUES(%v,%v,%v);", d.ID.String(), d.Name, d.Addr.String())),
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectExec(
-					fmt.Sprintf("INSERT OR IGNORE INTO messages(device_id, name) VALUES(%v,%v);", d.ID.String(), "TestMessage"),
+					regexp.QuoteMeta(fmt.Sprintf("INSERT OR IGNORE INTO messages(device_id, name) VALUES(%v,%v);", d.ID.String(), "TestMessage")),
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectExec(
-					fmt.Sprintf(`INSERT OR IGNORE INTO message_definition_fields(message_id, name, is_optional, is_required, is_scalar, value) 
-									VALUES(%v,%v,%v,%v,%v,%v);`, 1, "TestString", 0, 0, 1, "string"),
+					regexp.QuoteMeta(fmt.Sprintf(`INSERT OR IGNORE INTO message_definition_fields(message_id, name, is_optional, is_required, is_scalar, value) 
+									VALUES(%v,%v,%v,%v,%v,%v);`, 1, "TestString", 0, 0, 1, "string")),
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectExec(
-					fmt.Sprintf("INSERT OR IGNORE INTO service_response(is_scalar, value) VALUES(%v,%v);", 1, "string"),
+					regexp.QuoteMeta(fmt.Sprintf("INSERT OR IGNORE INTO service_response(is_scalar, value) VALUES(%v,%v);", 1, "string")),
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectExec(
-					fmt.Sprintf("INSERT OR IGNORE INTO services(device_id, name, response_id) VALUES(%v,%v,%v);", 1, "TestService", 1),
+					regexp.QuoteMeta(fmt.Sprintf("INSERT OR IGNORE INTO services(device_id, name, response_id) VALUES(%v,%v,%v);", d.ID.String(), "TestService", 1)),
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectExec(
-					fmt.Sprintf("INSERT OR IGNORE INTO service_request(service_id, is_scalar, value) VALUES(%v, %v,%v);", 1, 0, "string"),
+					regexp.QuoteMeta(fmt.Sprintf("INSERT OR IGNORE INTO service_request(service_id, is_scalar, value) VALUES(%v, %v,%v);", 1, 0, "TestMessage")),
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectCommit()
