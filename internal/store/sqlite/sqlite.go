@@ -14,15 +14,22 @@ import (
 	_ "github.com/mattn/go-sqlite3" // import sqlite3 driver
 )
 
-func typeToDBModel(t *serv.Type) (bool, string) {
-	isScalar := !(t.Reference == "")
+func booltoI(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func typeToDBModel(t *serv.Type) (int, string) {
+	isScalar := (t.Reference == "")
 	var value string
 	if isScalar {
 		value = t.Scalar.String()
 	} else {
 		value = t.Reference
 	}
-	return isScalar, value
+	return booltoI(isScalar), value
 }
 
 //Store defines what the Postgre SQL Store needs
@@ -246,7 +253,7 @@ func insertMessage(ctx context.Context, tx *sql.Tx, devID uuid.UUID, m *serv.Mes
 func insertMessageField(ctx context.Context, tx *sql.Tx, mesID int64, f *serv.Field) error {
 	isScalar, value := typeToDBModel(f.Type)
 	insertMesDefSQL := fmt.Sprintf(`INSERT OR IGNORE INTO message_definition_fields(message_id, name, is_optional, is_required, is_scalar, value) 
-									VALUES(%v,%v,%v,%v,%v,%v);`, mesID, f.Name, f.Optional, f.Required, isScalar, value)
+									VALUES(%v,%v,%v,%v,%v,%v);`, mesID, f.Name, booltoI(f.Optional), booltoI(f.Required), isScalar, value)
 	_, err := tx.ExecContext(ctx, insertMesDefSQL)
 	if err != nil {
 		return err
