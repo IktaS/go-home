@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"net"
 	"os"
 
 	"github.com/IktaS/go-home/internal/device"
@@ -20,6 +21,13 @@ func booltoI(b bool) int {
 	return 0
 }
 
+func intToBool(i int) bool {
+	if i == 1 {
+		return true
+	}
+	return false
+}
+
 func typeToDBModel(t *serv.Type) (int, string) {
 	isScalar := (t.Reference == "")
 	var value string
@@ -29,6 +37,17 @@ func typeToDBModel(t *serv.Type) (int, string) {
 		value = t.Reference
 	}
 	return booltoI(isScalar), value
+}
+
+func dbModelToType(isScalar int, value string) *serv.Type {
+	if isScalar == 1 {
+		return &serv.Type{
+			Scalar: serv.StringToScalar[value],
+		}
+	}
+	return &serv.Type{
+		Reference: value,
+	}
 }
 
 //Store defines what the Postgre SQL Store needs
@@ -122,7 +141,7 @@ func (p *Store) Init(config interface{}) error {
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"device_id" TEXT NOT NULL,
 		"name" TEXT,
-		"response_id" int NOT NULL,
+		"response_id" INTEGER NOT NULL,
 		FOREIGN KEY (device_id) REFERENCES devices (id),
 		FOREIGN KEY (response_id) REFERENCES service_response (id)
 	);`
@@ -173,7 +192,7 @@ func (p *Store) Init(config interface{}) error {
 	// Create MessageDefinitionFields Table
 	createMessageDefinitionFieldsTableSQL := `CREATE TABLE IF NOT EXISTS message_definition_fields(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-		"message_id" TEXT NOT NULL,
+		"message_id" INTEGER NOT NULL,
 		"name" TEXT,
 		"is_optional" TEXT,
 		"is_required" TEXT,
@@ -191,6 +210,40 @@ func (p *Store) Init(config interface{}) error {
 		return err
 	}
 
+	return nil
+}
+
+// Save saves a device to the SQLite store
+func (p *Store) Save(d *device.Device) error {
+	ctx := context.Background()
+	tx, err := p.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	insertDeviceSQL := "INSERT OR IGNORE INTO devices(id, name, addr) VALUES(?,?,?);"
+	_, err = tx.ExecContext(ctx, insertDeviceSQL, d.ID.String(), d.Name, d.Addr.String())
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	for _, m := range d.Messages {
+		err := insertMessage(ctx, tx, d.ID, m)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	for _, s := range d.Services {
+		err := insertService(ctx, tx, d.ID, s)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -273,43 +326,191 @@ func insertServiceRequest(ctx context.Context, tx *sql.Tx, id int64, t *serv.Typ
 	return nil
 }
 
-// Save saves a device to the SQLite store
-func (p *Store) Save(d *device.Device) error {
-	ctx := context.Background()
-	tx, err := p.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	insertDeviceSQL := "INSERT OR IGNORE INTO devices(id, name, addr) VALUES(?,?,?);"
-	_, err = tx.ExecContext(ctx, insertDeviceSQL, d.ID.String(), d.Name, d.Addr.String())
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	for _, m := range d.Messages {
-		err := insertMessage(ctx, tx, d.ID, m)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-	for _, s := range d.Services {
-		err := insertService(ctx, tx, d.ID, s)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // Get defines getting a device.Device
 func (p *Store) Get(id interface{}) (*device.Device, error) {
-	return nil, errors.New("Not Implemented")
+	id = id.(string)
+	deviceQuerySQL := "SELECT * FROM devices WHERE id = ?"
+	deviceRow := p.DB.QueryRow(deviceQuerySQL, id)
+	var uuID string
+	var name string
+	var addr string
+	err := deviceRow.Scan(&uuID, &name, &addr)
+	if err != nil {
+		return nil, err
+	}
+	dev, err := dbDeviceToDevice(p.DB, uuID, name, addr)
+	if err != nil {
+		return nil, err
+	}
+	return dev, nil
+}
+
+func dbDeviceToDevice(db *sql.DB, id string, name string, addr string) (*device.Device, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+	dev := &device.Device{
+		ID:   uid,
+		Name: name,
+		Addr: &net.IPAddr{
+			IP:   net.ParseIP(addr),
+			Zone: "",
+		},
+	}
+	messageQuerySQL := "SELECT * FROM messages WHERE device_id = ?"
+	messageRows, err := db.Query(messageQuerySQL, id)
+	defer messageRows.Close()
+	if err != nil {
+		return nil, err
+	}
+	dev.Messages, err = messageRowsToMessages(db, messageRows)
+	if err != nil {
+		return nil, err
+	}
+
+	serviceQuerySQL := "SELECT * FROM services WHERE device_id = ?"
+	serviceRows, err := db.Query(serviceQuerySQL, id)
+	defer serviceRows.Close()
+	if err != nil {
+		return nil, err
+	}
+	dev.Services, err = serviceRowsToServices(db, serviceRows)
+	if err != nil {
+		return nil, err
+	}
+	return dev, nil
+}
+
+func messageFieldRowsToMessageDefinition(db *sql.DB, mesID int) ([]*serv.MessageDefinition, error) {
+	messageFieldSQL := "SELECT * FROM message_definition_fields WHERE message_id = ?"
+	messageFieldRows, err := db.Query(messageFieldSQL, mesID)
+	defer messageFieldRows.Close()
+	if err != nil {
+		return nil, err
+	}
+	var mesDef []*serv.MessageDefinition
+	for messageFieldRows.Next() {
+		var id int
+		var messageID int
+		var name string
+		var isOptional int
+		var isRequired int
+		var isScalar int
+		var value string
+		err = messageFieldRows.Scan(&id, &messageID, &name, &isOptional, &isRequired, &isScalar, &value)
+		if err != nil {
+			return nil, err
+		}
+		mesDef = append(mesDef, &serv.MessageDefinition{
+			Field: &serv.Field{
+				Optional: intToBool(isOptional),
+				Required: intToBool(isRequired),
+				Type:     dbModelToType(isScalar, value),
+				Name:     name,
+			},
+		})
+	}
+	return mesDef, nil
+}
+
+func getMessageDefinition(db *sql.DB, mesID int) ([]*serv.MessageDefinition, error) {
+	var messageDefinitions []*serv.MessageDefinition
+
+	fields, err := messageFieldRowsToMessageDefinition(db, mesID)
+	if err != nil {
+		return nil, err
+	}
+	messageDefinitions = append(messageDefinitions, fields...)
+
+	//in case future message definition type is added, add code here
+
+	return messageDefinitions, nil
+}
+
+func messageRowsToMessages(db *sql.DB, rows *sql.Rows) ([]*serv.Message, error) {
+	var messages []*serv.Message
+	for rows.Next() {
+		var id int
+		var deviceID string
+		var name string
+		err := rows.Scan(&id, &deviceID, &name)
+		if err != nil {
+			return nil, err
+		}
+		messageDefinitions, err := getMessageDefinition(db, id)
+		if err != nil {
+			return nil, err
+		}
+
+		message := &serv.Message{
+			Name:        name,
+			Definitions: messageDefinitions,
+		}
+		messages = append(messages, message)
+	}
+	return messages, nil
+}
+
+func getServiceResponse(db *sql.DB, id int) (*serv.Type, error) {
+	serviceResponseSQL := "SELECT * FROM service_response WHERE id = ?"
+	serviceResponseRow := db.QueryRow(serviceResponseSQL, id)
+	var isScalar int
+	var value string
+	err := serviceResponseRow.Scan(&id, &isScalar, &value)
+	if err != nil {
+		return nil, err
+	}
+	return dbModelToType(isScalar, value), nil
+}
+
+func getServiceRequest(db *sql.DB, serviceID int) ([]*serv.Type, error) {
+	serviceRequestSQL := "SELECT * FROM service_request WHERE service_id = ?"
+	serviceRequestRows, err := db.Query(serviceRequestSQL, serviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer serviceRequestRows.Close()
+	var requests []*serv.Type
+	for serviceRequestRows.Next() {
+		var serviceID int
+		var isScalar int
+		var value string
+		err = serviceRequestRows.Scan(&serviceID, &isScalar, &value)
+		if err != nil {
+			return nil, err
+		}
+		requests = append(requests, dbModelToType(isScalar, value))
+	}
+	return requests, nil
+}
+
+func serviceRowsToServices(db *sql.DB, rows *sql.Rows) ([]*serv.Service, error) {
+	var services []*serv.Service
+	for rows.Next() {
+		var id int
+		var deviceID string
+		var name string
+		var responseID int
+		err := rows.Scan(&id, &deviceID, &name, &responseID)
+		if err != nil {
+			return nil, err
+		}
+		response, err := getServiceResponse(db, responseID)
+		if err != nil {
+			return nil, err
+		}
+		requests, err := getServiceRequest(db, id)
+		if err != nil {
+			return nil, err
+		}
+		services = append(services, &serv.Service{
+			Name:     name,
+			Request:  requests,
+			Response: response,
+		})
+	}
+	return services, nil
 }
 
 // GetAll gets all device
