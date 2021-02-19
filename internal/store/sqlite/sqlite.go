@@ -515,7 +515,28 @@ func serviceRowsToServices(db *sql.DB, rows *sql.Rows) ([]*serv.Service, error) 
 
 // GetAll gets all device
 func (p *Store) GetAll() ([]*device.Device, error) {
-	return nil, errors.New("Not Implemented")
+	deviceQuerySQL := "SELECT * FROM devices"
+	deviceRows, err := p.DB.Query(deviceQuerySQL)
+	defer deviceRows.Close()
+	if err != nil {
+		return nil, err
+	}
+	var devices []*device.Device
+	for deviceRows.Next() {
+		var uuID string
+		var name string
+		var addr string
+		err := deviceRows.Scan(&uuID, &name, &addr)
+		if err != nil {
+			return nil, err
+		}
+		device, err := dbDeviceToDevice(p.DB, uuID, name, addr)
+		if err != nil {
+			return nil, err
+		}
+		devices = append(devices, device)
+	}
+	return devices, nil
 }
 
 // Delete defines getting a device.Device
