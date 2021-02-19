@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/IktaS/go-home/internal/device"
 	"github.com/IktaS/go-serv/pkg/serv"
@@ -349,12 +351,21 @@ func dbDeviceToDevice(db *sql.DB, id string, name string, addr string) (*device.
 	if err != nil {
 		return nil, err
 	}
+	parsedAddr := strings.Split(addr, ":")
+	ip := net.ParseIP(parsedAddr[0])
+	port := 80
+	if len(parsedAddr) > 1 {
+		port, err = strconv.Atoi(parsedAddr[1])
+		if err != nil {
+			port = 80
+		}
+	}
 	dev := &device.Device{
 		ID:   uid,
 		Name: name,
-		Addr: &net.IPAddr{
-			IP:   net.ParseIP(addr),
-			Zone: "",
+		Addr: &net.TCPAddr{
+			IP:   ip,
+			Port: port,
 		},
 	}
 	messageQuerySQL := "SELECT * FROM messages WHERE device_id = ?"
@@ -472,10 +483,11 @@ func getServiceRequest(db *sql.DB, serviceID int) ([]*serv.Type, error) {
 	defer serviceRequestRows.Close()
 	var requests []*serv.Type
 	for serviceRequestRows.Next() {
+		var id int
 		var serviceID int
 		var isScalar int
 		var value string
-		err = serviceRequestRows.Scan(&serviceID, &isScalar, &value)
+		err = serviceRequestRows.Scan(&id, &serviceID, &isScalar, &value)
 		if err != nil {
 			return nil, err
 		}
