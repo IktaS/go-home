@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 
@@ -195,43 +194,9 @@ func (p *Store) Init(config interface{}) error {
 	return nil
 }
 
-// Save saves a device to the SQLite store
-func (p *Store) Save(d *device.Device) error {
-	ctx := context.Background()
-	tx, err := p.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	insertDeviceSQL := fmt.Sprintf("INSERT OR IGNORE INTO devices(id, name, addr) VALUES(%v,%v,%v);", d.ID.String(), d.Name, d.Addr.String())
-	_, err = tx.ExecContext(ctx, insertDeviceSQL)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	for _, m := range d.Messages {
-		err := insertMessage(ctx, tx, d.ID, m)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-	for _, s := range d.Services {
-		err := insertService(ctx, tx, d.ID, s)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func insertMessage(ctx context.Context, tx *sql.Tx, devID uuid.UUID, m *serv.Message) error {
-	insertMessageSQL := fmt.Sprintf("INSERT OR IGNORE INTO messages(device_id, name) VALUES(%v,%v);", devID.String(), m.Name)
-	row, err := tx.ExecContext(ctx, insertMessageSQL)
+	insertMessageSQL := "INSERT OR IGNORE INTO messages(device_id, name) VALUES(?,?);"
+	row, err := tx.ExecContext(ctx, insertMessageSQL, devID.String(), m.Name)
 	if err != nil {
 		return err
 	}
@@ -252,9 +217,9 @@ func insertMessage(ctx context.Context, tx *sql.Tx, devID uuid.UUID, m *serv.Mes
 
 func insertMessageField(ctx context.Context, tx *sql.Tx, mesID int64, f *serv.Field) error {
 	isScalar, value := typeToDBModel(f.Type)
-	insertMesDefSQL := fmt.Sprintf(`INSERT OR IGNORE INTO message_definition_fields(message_id, name, is_optional, is_required, is_scalar, value) 
-									VALUES(%v,%v,%v,%v,%v,%v);`, mesID, f.Name, booltoI(f.Optional), booltoI(f.Required), isScalar, value)
-	_, err := tx.ExecContext(ctx, insertMesDefSQL)
+	insertMesDefSQL := `INSERT OR IGNORE INTO message_definition_fields(message_id, name, is_optional, is_required, is_scalar, value) 
+						VALUES(?,?,?,?,?,?);`
+	_, err := tx.ExecContext(ctx, insertMesDefSQL, mesID, f.Name, booltoI(f.Optional), booltoI(f.Required), isScalar, value)
 	if err != nil {
 		return err
 	}
@@ -266,8 +231,8 @@ func insertService(ctx context.Context, tx *sql.Tx, devID uuid.UUID, s *serv.Ser
 	if err != nil {
 		return err
 	}
-	insertServiceSQL := fmt.Sprintf("INSERT OR IGNORE INTO services(device_id, name, response_id) VALUES(%v,%v,%v);", devID.String(), s.Name, responseID)
-	row, err := tx.ExecContext(ctx, insertServiceSQL)
+	insertServiceSQL := "INSERT OR IGNORE INTO services(device_id, name, response_id) VALUES(?,?,?);"
+	row, err := tx.ExecContext(ctx, insertServiceSQL, devID.String(), s.Name, responseID)
 	if err != nil {
 		return err
 	}
@@ -286,8 +251,8 @@ func insertService(ctx context.Context, tx *sql.Tx, devID uuid.UUID, s *serv.Ser
 
 func insertServiceResponse(ctx context.Context, tx *sql.Tx, t *serv.Type) (int64, error) {
 	isScalar, value := typeToDBModel(t)
-	insertServiceResponseSQL := fmt.Sprintf("INSERT OR IGNORE INTO service_response(is_scalar, value) VALUES(%v,%v);", isScalar, value)
-	row, err := tx.ExecContext(ctx, insertServiceResponseSQL)
+	insertServiceResponseSQL := "INSERT OR IGNORE INTO service_response(is_scalar, value) VALUES(?,?);"
+	row, err := tx.ExecContext(ctx, insertServiceResponseSQL, isScalar, value)
 	if err != nil {
 		return -1, err
 	}
@@ -300,8 +265,42 @@ func insertServiceResponse(ctx context.Context, tx *sql.Tx, t *serv.Type) (int64
 
 func insertServiceRequest(ctx context.Context, tx *sql.Tx, id int64, t *serv.Type) error {
 	isScalar, value := typeToDBModel(t)
-	insertServiceRequestSQL := fmt.Sprintf("INSERT OR IGNORE INTO service_request(service_id, is_scalar, value) VALUES(%v, %v,%v);", id, isScalar, value)
-	_, err := tx.ExecContext(ctx, insertServiceRequestSQL)
+	insertServiceRequestSQL := "INSERT OR IGNORE INTO service_request(service_id, is_scalar, value) VALUES(?,?,?);"
+	_, err := tx.ExecContext(ctx, insertServiceRequestSQL, id, isScalar, value)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Save saves a device to the SQLite store
+func (p *Store) Save(d *device.Device) error {
+	ctx := context.Background()
+	tx, err := p.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	insertDeviceSQL := "INSERT OR IGNORE INTO devices(id, name, addr) VALUES(?,?,?);"
+	_, err = tx.ExecContext(ctx, insertDeviceSQL, d.ID.String(), d.Name, d.Addr.String())
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	for _, m := range d.Messages {
+		err := insertMessage(ctx, tx, d.ID, m)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	for _, s := range d.Services {
+		err := insertService(ctx, tx, d.ID, s)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	err = tx.Commit()
 	if err != nil {
 		return err
 	}
