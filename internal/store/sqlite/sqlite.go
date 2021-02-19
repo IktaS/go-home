@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"log"
 	"net"
 	"os"
@@ -142,8 +141,8 @@ func (p *Store) Init(config interface{}) error {
 		"device_id" TEXT NOT NULL,
 		"name" TEXT,
 		"response_id" INTEGER NOT NULL,
-		FOREIGN KEY (device_id) REFERENCES devices (id),
-		FOREIGN KEY (response_id) REFERENCES service_response (id)
+		FOREIGN KEY (device_id) REFERENCES devices (id) ON UPDATE CASCADE ON DELETE CASCADE,
+		FOREIGN KEY (response_id) REFERENCES service_response (id) ON UPDATE CASCADE ON DELETE CASCADE
 	);`
 
 	statement, err = db.Prepare(createServicesTableSQL)
@@ -177,7 +176,7 @@ func (p *Store) Init(config interface{}) error {
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"device_id" TEXT NOT NULL,
 		"name" TEXT,
-		FOREIGN KEY (device_id) REFERENCES devices (id)
+		FOREIGN KEY (device_id) REFERENCES devices (id) ON UPDATE CASCADE ON DELETE CASCADE
 	);`
 
 	statement, err = db.Prepare(createMessagesTableSQL)
@@ -198,7 +197,7 @@ func (p *Store) Init(config interface{}) error {
 		"is_required" TEXT,
 		"is_scalar" INTEGER,
 		"value" TEXT,
-		FOREIGN KEY (message_id) REFERENCES messages(id)
+		FOREIGN KEY (message_id) REFERENCES messages(id) ON UPDATE CASCADE ON DELETE CASCADE
 	);`
 
 	statement, err = db.Prepare(createMessageDefinitionFieldsTableSQL)
@@ -541,5 +540,21 @@ func (p *Store) GetAll() ([]*device.Device, error) {
 
 // Delete defines getting a device.Device
 func (p *Store) Delete(id interface{}) error {
-	return errors.New("Not Implemented")
+	id = id.(string)
+	ctx := context.Background()
+	tx, err := p.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	deleteDeviceSQL := "DELETE FROM devices WHERE id = ?"
+	_, err = tx.ExecContext(ctx, deleteDeviceSQL, id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
