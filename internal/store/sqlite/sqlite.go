@@ -327,7 +327,7 @@ func insertServiceRequest(ctx context.Context, tx *sql.Tx, id int64, t *serv.Typ
 	return nil
 }
 
-// Get defines getting a device.Device
+// Get defines getting a device.Device, accept id as string
 func (p *Store) Get(id interface{}) (*device.Device, error) {
 	id = id.(string)
 	deviceQuerySQL := "SELECT * FROM devices WHERE id = ?"
@@ -550,7 +550,7 @@ func (p *Store) GetAll() ([]*device.Device, error) {
 	return devices, nil
 }
 
-// Delete defines getting a device.Device
+// Delete defines getting a device.Device, accepts a string as ID
 func (p *Store) Delete(id interface{}) error {
 	id = id.(string)
 	ctx := context.Background()
