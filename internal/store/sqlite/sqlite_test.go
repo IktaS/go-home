@@ -55,12 +55,11 @@ func TestStore_Save(t *testing.T) {
 		setup    func(t *testing.T) (*Store, sqlmock.Sqlmock)
 		teardown func(t *testing.T, s *Store)
 		input    *device.Device
-		expected func(sqlmock.Sqlmock, *device.Device)
 		wantErr  bool
 	}{
 		{
 			name: "Default Test",
-			setup: func(t *testing.T) (*Store, sqlmock.Sqlmock) {
+			setup: func(t *testing.T) (*Store, sqlmock.Sqlmock, d *device.Device) {
 				db, mock, err := sqlmock.New()
 				if err != nil {
 					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -69,6 +68,35 @@ func TestStore_Save(t *testing.T) {
 					FileName: "test_sqlite.db",
 					DB:       db,
 				}
+
+				mock.ExpectBegin()
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO devices",
+				).WithArgs(d.ID.String(), d.Name, d.Addr.String()).WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO messages",
+				).WithArgs(d.ID.String(), "TestMessage").WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO message_definition_fields",
+				).WithArgs(1, "TestString", 0, 0, 1, "string").WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO service_response",
+				).WithArgs(1, "string").WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO services",
+				).WithArgs(d.ID.String(), "TestService", 1).WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO service_request",
+				).WithArgs(1, 0, "TestMessage").WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectCommit()
+
 				return s, mock
 			},
 			teardown: func(t *testing.T, s *Store) {
@@ -109,35 +137,6 @@ func TestStore_Save(t *testing.T) {
 						},
 					},
 				},
-			},
-			expected: func(mock sqlmock.Sqlmock, d *device.Device) {
-				mock.ExpectBegin()
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO devices",
-				).WithArgs(d.ID.String(), d.Name, d.Addr.String()).WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO messages",
-				).WithArgs(d.ID.String(), "TestMessage").WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO message_definition_fields",
-				).WithArgs(1, "TestString", 0, 0, 1, "string").WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO service_response",
-				).WithArgs(1, "string").WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO services",
-				).WithArgs(d.ID.String(), "TestService", 1).WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO service_request",
-				).WithArgs(1, 0, "TestMessage").WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectCommit()
 			},
 			wantErr: false,
 		},
@@ -187,7 +186,7 @@ func TestStore_Get(t *testing.T) {
 				// setup database filling
 				//device filling
 				deviceRows := sqlmock.NewRows([]string{"id", "name", "addr"}).
-					AddRow(deviceID, "test-device", "127.0.0.1")
+					AddRow(deviceID, "test-device", "127.0.0.1:80")
 				mock.ExpectQuery(
 					regexp.QuoteMeta("SELECT * FROM devices WHERE id"),
 				).WithArgs(deviceID).WillReturnRows(deviceRows)
@@ -286,6 +285,37 @@ func TestStore_Get(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, tt.expected, ret)
+			tt.teardown(t, p)
+		})
+	}
+}
+
+func TestStore_Delete(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(t *testing.T) (*Store, sqlmock.Sqlmock)
+		teardown func(t *testing.T, s *Store)
+		input    string
+		wantErr  bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p, mock := tt.setup(t)
+			tt.expected(mock)
+			err := p.Delete(tt.input)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			err = mock.ExpectationsWereMet()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 			tt.teardown(t, p)
 		})
 	}
