@@ -1,7 +1,13 @@
 package device
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"net"
+	"net/http"
 
 	"github.com/IktaS/go-serv/pkg/serv"
 	"github.com/google/uuid"
@@ -51,4 +57,27 @@ func NewDevice(name string, address net.Addr, s []byte) (*Device, error) {
 		Messages: messages,
 	}
 	return dev, nil
+}
+
+// Call calls a service with a data
+func (d *Device) Call(service string, data map[string]interface{}) ([]byte, error) {
+	jsondata, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	connectionString := fmt.Sprintf("%v/%v", d.Addr.String(), service)
+	log.Println("calling to " + connectionString)
+	req, err := http.NewRequest("POST", connectionString, bytes.NewBuffer(jsondata))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
 }
