@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/IktaS/go-home/internal/auth"
 	"github.com/IktaS/go-home/internal/device"
@@ -117,6 +119,22 @@ func appHandlerWrapper(f func(http.ResponseWriter, *http.Request, *App), a *App)
 	}
 }
 
+func getLocalIP() net.IP {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP
+			}
+		}
+	}
+	return nil
+}
+
 func main() {
 	repo, err := sqlite.NewSQLiteStore("sqlite.db")
 	if err != nil {
@@ -127,4 +145,13 @@ func main() {
 	r.HandleFunc("/", HomeHandler)
 	r.HandleFunc("/connect", appHandlerWrapper(ConnectHandler, app))
 	r.HandleFunc("/service", appHandlerWrapper(ServiceHandler, app))
+	srv := &http.Server{
+		Handler: r,
+		Addr:    "0.0.0.0:5575",
+		// Good practice: enforce timeouts for servers you create!
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+	log.Println("App running in : " + getLocalIP().String())
+	log.Fatal(srv.ListenAndServe())
 }
