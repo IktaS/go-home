@@ -52,14 +52,14 @@ func TestNewSQLiteStore(t *testing.T) {
 func TestStore_Save(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func(t *testing.T) (*Store, sqlmock.Sqlmock)
+		setup    func(t *testing.T, d *device.Device) (*Store, sqlmock.Sqlmock)
 		teardown func(t *testing.T, s *Store)
 		input    *device.Device
 		wantErr  bool
 	}{
 		{
 			name: "Default Test",
-			setup: func(t *testing.T) (*Store, sqlmock.Sqlmock, d *device.Device) {
+			setup: func(t *testing.T, d *device.Device) (*Store, sqlmock.Sqlmock) {
 				db, mock, err := sqlmock.New()
 				if err != nil {
 					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -143,8 +143,7 @@ func TestStore_Save(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, mock := tt.setup(t)
-			tt.expected(mock, tt.input)
+			p, mock := tt.setup(t, tt.input)
 			err := p.Save(tt.input)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -303,7 +302,6 @@ func TestStore_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p, mock := tt.setup(t)
-			tt.expected(mock)
 			err := p.Delete(tt.input)
 			if tt.wantErr {
 				assert.Error(t, err)
