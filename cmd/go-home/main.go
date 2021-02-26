@@ -42,6 +42,7 @@ func main() {
 	a := app.NewApp(repo)
 	r := mux.NewRouter()
 	handlers.ConnectHandlers(r, a)
+	handlers.DeviceHandlers(r, a)
 	srv := &http.Server{
 		Handler: r,
 		Addr:    "0.0.0.0:5575",

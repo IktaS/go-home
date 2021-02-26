@@ -1,25 +1,7 @@
 package main
 
-import (
-	"net/http"
-	"testing"
-)
+import "testing"
 
-func TestConnectHandler(t *testing.T) {
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-		a *App
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ConnectHandler(tt.args.w, tt.args.r, tt.args.a)
-		})
-	}
+func Test_main(t *testing.T) {
+	main()
 }

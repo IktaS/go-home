@@ -59,7 +59,9 @@ type Store struct {
 
 // NewSQLiteStore makes a new SQLite Store
 func NewSQLiteStore(filename string) (*Store, error) {
-	p := &Store{}
+	p := &Store{
+		FileName: filename,
+	}
 	err := p.Init(filename)
 	if err != nil {
 		return nil, err
@@ -210,7 +212,7 @@ func (p *Store) Init(config interface{}) error {
 	if err != nil {
 		return err
 	}
-
+	p.DB = db
 	return nil
 }
 

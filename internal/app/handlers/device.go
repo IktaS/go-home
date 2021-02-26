@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/IktaS/go-home/internal/app"
@@ -13,6 +14,17 @@ func getAllDeviceHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	jsonString := "["
+	notFirst := false
+	for _, dev := range devs {
+		if notFirst {
+			jsonString += ","
+		}
+		notFirst = true
+		jsonString += dev.ToJSON()
+	}
+	jsonString += "]"
+	fmt.Fprintf(w, jsonString)
 }
 
 // DeviceHandlers add routes to handle device operation, getting, updating and such
