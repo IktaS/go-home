@@ -1,6 +1,6 @@
 package store
 
-import "github.com/IktaS/go-home/internal/device"
+import "github.com/IktaS/go-home/internal/pkg/device"
 
 //Repo is an interface that defines what a repository should have
 type Repo interface {

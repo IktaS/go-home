@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/IktaS/go-home/internal/device"
+	"github.com/IktaS/go-home/internal/pkg/device"
 	_ "github.com/lib/pq"
 )
 

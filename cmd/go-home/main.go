@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/IktaS/go-home/internal/auth"
-	"github.com/IktaS/go-home/internal/device"
-	"github.com/IktaS/go-home/internal/store"
-	"github.com/IktaS/go-home/internal/store/sqlite"
+	"github.com/IktaS/go-home/internal/app/store"
+	"github.com/IktaS/go-home/internal/app/store/sqlite"
+	"github.com/IktaS/go-home/internal/pkg/auth"
+	"github.com/IktaS/go-home/internal/pkg/device"
 	"github.com/gorilla/mux"
 )
 

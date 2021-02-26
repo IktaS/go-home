@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/IktaS/go-home/internal/device"
+	"github.com/IktaS/go-home/internal/pkg/device"
 	"github.com/IktaS/go-serv/pkg/serv"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3" // import sqlite3 driver
