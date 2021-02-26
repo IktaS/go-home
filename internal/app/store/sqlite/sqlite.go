@@ -221,7 +221,7 @@ func (p *Store) Save(d *device.Device) error {
 	if err != nil {
 		return err
 	}
-	insertDeviceSQL := "INSERT OR IGNORE INTO devices(id, name, addr) VALUES(?,?,?);"
+	insertDeviceSQL := "INSERT OR REPLACE INTO devices(id, name, addr) VALUES(?,?,?);"
 	_, err = tx.ExecContext(ctx, insertDeviceSQL, d.ID.String(), d.Name, d.Addr.String())
 	if err != nil {
 		tx.Rollback()
