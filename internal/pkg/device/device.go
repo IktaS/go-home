@@ -81,3 +81,107 @@ func (d *Device) Call(service string, data map[string]interface{}) ([]byte, erro
 	}
 	return body, nil
 }
+
+//ToJSON returns a json string that represent the device
+func (d *Device) ToJSON() string {
+	ret := fmt.Sprintf("{\"id\":\"%v\",\"name\":\"%v\",\"services\":%v,\"messages\":%v}",
+		d.ID.String(),
+		d.Name,
+		serviceArrayToJSON(d.Services),
+		messageArrayToJSON(d.Messages),
+	)
+	return ret
+}
+
+func messageArrayToJSON(messages []*serv.Message) string {
+	ret := "["
+	notfirst := false
+	for _, m := range messages {
+		if notfirst {
+			ret += ","
+		}
+		notfirst = true
+		ret += messageToJSON(m)
+	}
+	ret += "]"
+	return ret
+}
+
+func messageToJSON(m *serv.Message) string {
+	ret := fmt.Sprintf("{\"name\":\"%v\",\"definitions\":%v}",
+		m.Name,
+		mesDefinitionArrayToJSON(m.Definitions),
+	)
+	return ret
+}
+
+func mesDefinitionArrayToJSON(mesDefs []*serv.MessageDefinition) string {
+	ret := "["
+	notfirst := false
+	for _, m := range mesDefs {
+		if notfirst {
+			ret += ","
+		}
+		notfirst = true
+		ret += mesDefToJSON(m)
+	}
+	ret += "]"
+	return ret
+}
+
+func mesDefToJSON(m *serv.MessageDefinition) string {
+	if m.Field != nil {
+		f := m.Field
+		isOptional := f.Optional && !f.Required
+		return fmt.Sprintf("{\"name\":\"%v\",\"isOptional\":\"%v\",\"value\":%v}",
+			f.Name,
+			isOptional,
+			typeToJSON(f.Type),
+		)
+	}
+	return "\"None\""
+}
+
+func serviceArrayToJSON(services []*serv.Service) string {
+	ret := "["
+	notfirst := false
+	for _, s := range services {
+		if notfirst {
+			ret += ","
+		}
+		notfirst = true
+		ret += serviceToJSON(s)
+	}
+	ret += "]"
+	return ret
+}
+
+func serviceToJSON(s *serv.Service) string {
+	ret := fmt.Sprintf("{\"name\":\"%v\",\"response\":%v,\"request\":%v}",
+		s.Name,
+		typeToJSON(s.Response),
+		typeArrayToJSON(s.Request),
+	)
+	return ret
+}
+
+func typeArrayToJSON(types []*serv.Type) string {
+	ret := "["
+	notfirst := false
+	for _, t := range types {
+		if notfirst {
+			ret += ","
+		}
+		notfirst = true
+		ret += typeToJSON(t)
+	}
+	ret += "]"
+	return ret
+}
+
+func typeToJSON(t *serv.Type) string {
+	if t.Reference == "" {
+		return fmt.Sprintf("{\"isScalar\":\"true\",\"value\":\"%v\"}", t.Scalar.String())
+	}
+	return fmt.Sprintf("{\"isScalar\":\"false\",\"value\":\"%v\"}", t.Reference)
+}
