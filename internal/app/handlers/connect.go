@@ -20,10 +20,11 @@ newConnection defines a device connect JSON payload :
 	Algorithm 	`algo`		: Defines what algorithm they use to compress said Serv file
 */
 type newConnection struct {
-	HubCode   string `json:"hub-code"`
-	Name      string `json:"name"`
-	Serv      string `json:"serv"`
-	Algorithm string `json:"algo"`
+	ID        interface{} `json:"id,omitempty"`
+	HubCode   string      `json:"hub-code"`
+	Name      string      `json:"name"`
+	Serv      string      `json:"serv"`
+	Algorithm string      `json:"algo"`
 }
 
 func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
@@ -31,6 +32,20 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 	err := json.NewDecoder(r.Body).Decode(&newconn)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	ip := net.ParseIP(r.RemoteAddr)
+	addr := &net.IPAddr{IP: ip, Zone: ""}
+	if newconn.ID != nil {
+		dev, err := a.Devices.Get(newconn.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		dev.Addr = addr
+		a.Devices.Save(dev)
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprintf(w, "Device Reconnected to Hub!")
 		return
 	}
 	if !auth.Authenticate(newconn.HubCode) {
@@ -42,8 +57,6 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 	case "none":
 		DecompServ = []byte(newconn.Serv)
 	}
-	ip := net.ParseIP(r.RemoteAddr)
-	addr := &net.IPAddr{IP: ip, Zone: ""}
 	dev, err := device.NewDevice(newconn.Name, addr, DecompServ)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -55,7 +68,7 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
-	fmt.Fprintf(w, "Device Connected to Hub!")
+	fmt.Fprintf(w, dev.ID.String())
 }
 
 /*
