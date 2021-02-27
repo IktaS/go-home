@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/IktaS/go-home/internal/app"
 	"github.com/IktaS/go-home/internal/pkg/auth"
@@ -40,7 +41,8 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		return
 	}
 	log.Println("New connection from :" + r.RemoteAddr)
-	ip := net.ParseIP(r.RemoteAddr)
+	ipStr := strings.Split(r.RemoteAddr, ":")
+	ip := net.ParseIP(ipStr[0])
 	addr := &net.IPAddr{IP: ip, Zone: ""}
 	if newconn.ID != nil {
 		dev, err := a.Devices.Get(newconn.ID)
