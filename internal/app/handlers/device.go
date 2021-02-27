@@ -99,8 +99,9 @@ func DeviceHandlers(r *mux.Router, a *app.App) {
 
 //DeviceToJSON returns a json string that represent the device
 func DeviceToJSON(d *device.Device) string {
-	ret := fmt.Sprintf("{\"id\":\"%v\",\"name\":\"%v\",\"services\":\"%v\",\"messages\":\"%v\"}",
+	ret := fmt.Sprintf("{\"id\":\"%v\",\"addr\":\"%v\",\"name\":\"%v\",\"services\":\"%v\",\"messages\":\"%v\"}",
 		d.ID.String(),
+		d.Addr.String(),
 		d.Name,
 		fmt.Sprintf("%v/device/%v/services", os.Getenv("APP_URL"), d.ID.String()),
 		fmt.Sprintf("%v/device/%v/messages", os.Getenv("APP_URL"), d.ID.String()),
