@@ -22,7 +22,7 @@ newConnection defines a device connect JSON payload :
 type newConnection struct {
 	HubCode   string `json:"hub-code"`
 	Name      string `json:"name"`
-	Serv      []byte `json:"serv"`
+	Serv      string `json:"serv"`
 	Algorithm string `json:"algo"`
 }
 
@@ -40,7 +40,7 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 	var DecompServ []byte
 	switch algo := newconn.Algorithm; algo {
 	case "none":
-		DecompServ = newconn.Serv
+		DecompServ = []byte(newconn.Serv)
 	}
 	ip := net.ParseIP(r.RemoteAddr)
 	addr := &net.IPAddr{IP: ip, Zone: ""}
