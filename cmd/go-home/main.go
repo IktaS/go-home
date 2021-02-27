@@ -75,7 +75,7 @@ func main() {
 		panic(err)
 	}
 	a := app.NewApp(repo)
-	r := mux.NewRouter()
+	r := mux.NewRouter().StrictSlash(true)
 	handlers.ConnectHandlers(r, a)
 	handlers.DeviceHandlers(r, a)
 	r.Use(loggingMiddleware)
