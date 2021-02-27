@@ -44,7 +44,7 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		}
 		dev.Addr = addr
 		a.Devices.Save(dev)
-		w.WriteHeader(http.StatusAccepted)
+		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Device Reconnected to Hub!")
 		return
 	}
@@ -67,7 +67,7 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		http.Error(w, "Error Saving New Device \n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, dev.ID.String())
 }
 
