@@ -87,7 +87,7 @@ func serviceHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, string(res))
 }
 
