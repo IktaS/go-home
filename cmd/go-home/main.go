@@ -34,6 +34,15 @@ func getLocalIP() net.IP {
 	return nil
 }
 
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Do stuff here
+		log.Println(r.RequestURI)
+		// Call the next handler, which can be another middleware in the chain, or the final handler.
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	repo, err := sqlite.NewSQLiteStore("sqlite.db")
 	if err != nil {
@@ -43,6 +52,7 @@ func main() {
 	r := mux.NewRouter()
 	handlers.ConnectHandlers(r, a)
 	handlers.DeviceHandlers(r, a)
+	r.Use(loggingMiddleware)
 	srv := &http.Server{
 		Handler: r,
 		Addr:    "0.0.0.0:5575",
