@@ -5,12 +5,14 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/IktaS/go-home/internal/app"
 	"github.com/IktaS/go-home/internal/app/handlers"
 	"github.com/IktaS/go-home/internal/app/store/sqlite"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 //HomeHandler handles home
@@ -43,7 +45,28 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func loadEnv() {
+	env := os.Getenv("ENV")
+	if "" == env {
+		env = "development"
+	}
+
+	godotenv.Load(".env." + env + ".local")
+	if "test" != env {
+		godotenv.Load(".env.local")
+	}
+	godotenv.Load(".env." + env)
+	godotenv.Load() // The Original .env
+
+	if os.Getenv("PORT") == "" {
+		os.Setenv("APP_URL", os.Getenv("URL"))
+	} else {
+		os.Setenv("APP_URL", os.Getenv("URL")+":"+os.Getenv("PORT"))
+	}
+}
+
 func main() {
+	loadEnv()
 	repo, err := sqlite.NewSQLiteStore("sqlite.db")
 	if err != nil {
 		panic(err)
@@ -55,11 +78,12 @@ func main() {
 	r.Use(loggingMiddleware)
 	srv := &http.Server{
 		Handler: r,
-		Addr:    "0.0.0.0:5575",
+		Addr:    os.Getenv("APP_URL"),
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	log.Println("App running in : " + getLocalIP().String())
+	log.Println("App running in : " + srv.Addr)
+	log.Println("App local IP	: " + getLocalIP().String())
 	log.Fatal(srv.ListenAndServe())
 }

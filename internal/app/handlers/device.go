@@ -102,8 +102,8 @@ func DeviceToJSON(d *device.Device) string {
 	ret := fmt.Sprintf("{\"id\":\"%v\",\"name\":\"%v\",\"services\":\"%v\",\"messages\":\"%v\"}",
 		d.ID.String(),
 		d.Name,
-		fmt.Sprintf("%v/%v/services", os.Getenv("URL_PATH"), d.ID.String()),
-		fmt.Sprintf("%v/%v/messages", os.Getenv("URL_PATH"), d.ID.String()),
+		fmt.Sprintf("%v/%v/services", os.Getenv("APP_URL"), d.ID.String()),
+		fmt.Sprintf("%v/%v/messages", os.Getenv("APP_URL"), d.ID.String()),
 	)
 	return ret
 }
