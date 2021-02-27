@@ -30,6 +30,9 @@ func intToBool(i int) bool {
 }
 
 func typeToDBModel(t *serv.Type) (int, string) {
+	if t == nil {
+		return -1, ""
+	}
 	isScalar := (t.Reference == "")
 	var value string
 	if isScalar {
@@ -230,6 +233,9 @@ func (p *Store) Save(d *device.Device) error {
 		return err
 	}
 	for _, m := range d.Messages {
+		if m == nil {
+			continue
+		}
 		err := insertMessage(ctx, tx, d.ID, m)
 		if err != nil {
 			tx.Rollback()
@@ -237,6 +243,9 @@ func (p *Store) Save(d *device.Device) error {
 		}
 	}
 	for _, s := range d.Services {
+		if s == nil {
+			continue
+		}
 		err := insertService(ctx, tx, d.ID, s)
 		if err != nil {
 			tx.Rollback()
@@ -251,6 +260,9 @@ func (p *Store) Save(d *device.Device) error {
 }
 
 func insertMessage(ctx context.Context, tx *sql.Tx, devID uuid.UUID, m *serv.Message) error {
+	if m == nil {
+		return nil
+	}
 	insertMessageSQL := "INSERT OR IGNORE INTO messages(device_id, name) VALUES(?,?);"
 	row, err := tx.ExecContext(ctx, insertMessageSQL, devID.String(), m.Name)
 	if err != nil {
@@ -272,7 +284,13 @@ func insertMessage(ctx context.Context, tx *sql.Tx, devID uuid.UUID, m *serv.Mes
 }
 
 func insertMessageField(ctx context.Context, tx *sql.Tx, mesID int64, f *serv.Field) error {
+	if f == nil {
+		return nil
+	}
 	isScalar, value := typeToDBModel(f.Type)
+	if isScalar == -1 {
+		return nil
+	}
 	insertMesDefSQL := `INSERT OR IGNORE INTO message_definition_fields(message_id, name, is_optional, is_required, is_scalar, value) 
 						VALUES(?,?,?,?,?,?);`
 	_, err := tx.ExecContext(ctx, insertMesDefSQL, mesID, f.Name, booltoI(f.Optional), booltoI(f.Required), isScalar, value)
@@ -283,6 +301,9 @@ func insertMessageField(ctx context.Context, tx *sql.Tx, mesID int64, f *serv.Fi
 }
 
 func insertService(ctx context.Context, tx *sql.Tx, devID uuid.UUID, s *serv.Service) error {
+	if s == nil {
+		return nil
+	}
 	responseID, err := insertServiceResponse(ctx, tx, s.Response)
 	if err != nil {
 		return err
@@ -306,6 +327,9 @@ func insertService(ctx context.Context, tx *sql.Tx, devID uuid.UUID, s *serv.Ser
 }
 
 func insertServiceResponse(ctx context.Context, tx *sql.Tx, t *serv.Type) (int64, error) {
+	if t == nil {
+		return -1, nil
+	}
 	isScalar, value := typeToDBModel(t)
 	insertServiceResponseSQL := "INSERT OR IGNORE INTO service_response(is_scalar, value) VALUES(?,?);"
 	row, err := tx.ExecContext(ctx, insertServiceResponseSQL, isScalar, value)
@@ -320,6 +344,9 @@ func insertServiceResponse(ctx context.Context, tx *sql.Tx, t *serv.Type) (int64
 }
 
 func insertServiceRequest(ctx context.Context, tx *sql.Tx, id int64, t *serv.Type) error {
+	if t == nil {
+		return nil
+	}
 	isScalar, value := typeToDBModel(t)
 	insertServiceRequestSQL := "INSERT OR IGNORE INTO service_request(service_id, is_scalar, value) VALUES(?,?,?);"
 	_, err := tx.ExecContext(ctx, insertServiceRequestSQL, id, isScalar, value)

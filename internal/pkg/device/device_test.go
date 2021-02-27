@@ -23,6 +23,7 @@ func TestNewDevice(t *testing.T) {
 				message TestMessage{string TestString;};service TestService(TestMessage):string;
 			`),
 			expected: &Device{
+				Name: "Device1",
 				Addr: &net.TCPAddr{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Port: 80,
@@ -64,6 +65,7 @@ func TestNewDevice(t *testing.T) {
 				message TestMessage{string TestString;};
 			`),
 			expected: &Device{
+				Name: "Device1",
 				Addr: &net.TCPAddr{
 					IP:   net.IPv4(127, 0, 0, 1),
 					Port: 80,
@@ -81,6 +83,25 @@ func TestNewDevice(t *testing.T) {
 								},
 							},
 						},
+					},
+				},
+			},
+		},
+		{
+			Name:    "One Service",
+			DevName: "Device1",
+			input: []byte(`
+				service click();
+			`),
+			expected: &Device{
+				Name: "Device1",
+				Addr: &net.TCPAddr{
+					IP:   net.IPv4(127, 0, 0, 1),
+					Port: 80,
+				},
+				Services: []*serv.Service{
+					{
+						Name: "click",
 					},
 				},
 			},

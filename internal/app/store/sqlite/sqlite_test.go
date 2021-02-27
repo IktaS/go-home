@@ -72,7 +72,7 @@ func TestStore_Save(t *testing.T) {
 				mock.ExpectBegin()
 
 				mock.ExpectExec(
-					"INSERT OR IGNORE INTO devices",
+					"INSERT OR REPLACE INTO devices",
 				).WithArgs(d.ID.String(), d.Name, d.Addr.String()).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectExec(
@@ -135,6 +135,66 @@ func TestStore_Save(t *testing.T) {
 								},
 							},
 						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Default Test One Service",
+			setup: func(t *testing.T, d *device.Device) (*Store, sqlmock.Sqlmock) {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				s := &Store{
+					FileName: "test_sqlite.db",
+					DB:       db,
+				}
+
+				mock.ExpectBegin()
+
+				mock.ExpectExec(
+					"INSERT OR REPLACE INTO devices",
+				).WithArgs(d.ID.String(), d.Name, d.Addr.String()).WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO messages",
+				).WithArgs(d.ID.String(), "TestMessage").WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO message_definition_fields",
+				).WithArgs(1, "TestString", 0, 0, 1, "string").WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO service_response",
+				).WithArgs(1, "string").WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO services",
+				).WithArgs(d.ID.String(), "TestService", 1).WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectExec(
+					"INSERT OR IGNORE INTO service_request",
+				).WithArgs(1, 0, "TestMessage").WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectCommit()
+
+				return s, mock
+			},
+			teardown: func(t *testing.T, s *Store) {
+				s.DB.Close()
+			},
+			input: &device.Device{
+				ID:   uuid.New(),
+				Name: "Device1",
+				Addr: &net.TCPAddr{
+					IP:   net.IPv4(127, 0, 0, 1),
+					Port: 80,
+				},
+				Services: []*serv.Service{
+					{
+						Name: "click",
 					},
 				},
 			},
