@@ -147,7 +147,7 @@ func (p *Store) Init(config interface{}) error {
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"device_id" TEXT NOT NULL,
 		"name" TEXT,
-		"response_id" INTEGER NOT NULL,
+		"response_id" INTEGER DEFAULT NULL,
 		FOREIGN KEY (device_id) REFERENCES devices (id) ON UPDATE CASCADE ON DELETE CASCADE,
 		FOREIGN KEY (response_id) REFERENCES service_response (id) ON UPDATE CASCADE ON DELETE CASCADE
 	);`
@@ -304,18 +304,30 @@ func insertService(ctx context.Context, tx *sql.Tx, devID uuid.UUID, s *serv.Ser
 	if s == nil {
 		return nil
 	}
-	responseID, err := insertServiceResponse(ctx, tx, s.Response)
-	if err != nil {
-		return err
-	}
-	insertServiceSQL := "INSERT OR IGNORE INTO services(device_id, name, response_id) VALUES(?,?,?);"
-	row, err := tx.ExecContext(ctx, insertServiceSQL, devID.String(), s.Name, responseID)
-	if err != nil {
-		return err
-	}
-	serviceID, err := row.LastInsertId()
-	if err != nil {
-		return err
+	var serviceID int64
+	if s.Response != nil {
+		responseID, err := insertServiceResponse(ctx, tx, s.Response)
+		insertServiceSQL := "INSERT OR IGNORE INTO services(device_id, name, response_id) VALUES(?,?,?);"
+		row, err := tx.ExecContext(ctx, insertServiceSQL, devID.String(), s.Name, responseID)
+		if err != nil {
+			return err
+		}
+		res, err := row.LastInsertId()
+		serviceID = res
+		if err != nil {
+			return err
+		}
+	} else {
+		insertServiceSQL := "INSERT OR IGNORE INTO services(device_id, name) VALUES(?,?);"
+		row, err := tx.ExecContext(ctx, insertServiceSQL, devID.String(), s.Name)
+		if err != nil {
+			return err
+		}
+		res, err := row.LastInsertId()
+		serviceID = res
+		if err != nil {
+			return err
+		}
 	}
 	for _, r := range s.Request {
 		err := insertServiceRequest(ctx, tx, serviceID, r)
@@ -531,15 +543,22 @@ func serviceRowsToServices(db *sql.DB, rows *sql.Rows) ([]*serv.Service, error) 
 		var id int
 		var deviceID string
 		var name string
-		var responseID int
+		var responseID sql.NullInt64
 		err := rows.Scan(&id, &deviceID, &name, &responseID)
 		if err != nil {
 			return nil, err
 		}
-		response, err := getServiceResponse(db, responseID)
-		if err != nil {
-			return nil, err
+		var response *serv.Type
+		if responseID.Valid {
+			res, err := getServiceResponse(db, int(responseID.Int64))
+			response = res
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			response = nil
 		}
+
 		requests, err := getServiceRequest(db, id)
 		if err != nil {
 			return nil, err

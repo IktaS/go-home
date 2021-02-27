@@ -159,24 +159,8 @@ func TestStore_Save(t *testing.T) {
 				).WithArgs(d.ID.String(), d.Name, d.Addr.String()).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectExec(
-					"INSERT OR IGNORE INTO messages",
-				).WithArgs(d.ID.String(), "TestMessage").WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO message_definition_fields",
-				).WithArgs(1, "TestString", 0, 0, 1, "string").WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO service_response",
-				).WithArgs(1, "string").WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
 					"INSERT OR IGNORE INTO services",
-				).WithArgs(d.ID.String(), "TestService", 1).WillReturnResult(sqlmock.NewResult(1, 1))
-
-				mock.ExpectExec(
-					"INSERT OR IGNORE INTO service_request",
-				).WithArgs(1, 0, "TestMessage").WillReturnResult(sqlmock.NewResult(1, 1))
+				).WithArgs(d.ID.String(), "click").WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectCommit()
 

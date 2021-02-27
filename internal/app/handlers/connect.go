@@ -51,7 +51,7 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 	}
 	err = a.Devices.Save(dev)
 	if err != nil {
-		http.Error(w, "Error Saving New Device", http.StatusInternalServerError)
+		http.Error(w, "Error Saving New Device \n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
