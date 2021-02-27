@@ -102,8 +102,8 @@ func DeviceToJSON(d *device.Device) string {
 	ret := fmt.Sprintf("{\"id\":\"%v\",\"name\":\"%v\",\"services\":\"%v\",\"messages\":\"%v\"}",
 		d.ID.String(),
 		d.Name,
-		fmt.Sprintf("%v/%v/services", os.Getenv("APP_URL"), d.ID.String()),
-		fmt.Sprintf("%v/%v/messages", os.Getenv("APP_URL"), d.ID.String()),
+		fmt.Sprintf("%v/device/%v/services", os.Getenv("APP_URL"), d.ID.String()),
+		fmt.Sprintf("%v/device/%v/messages", os.Getenv("APP_URL"), d.ID.String()),
 	)
 	return ret
 }
@@ -182,12 +182,17 @@ func serviceArrayToJSON(services []*serv.Service) string {
 }
 
 func serviceToJSON(s *serv.Service) string {
-	ret := fmt.Sprintf("{\"name\":\"%v\",\"response\":%v,\"request\":%v}",
+	if s.Response == nil {
+		return fmt.Sprintf("{\"name\":\"%v\",\"request\":%v}",
+			s.Name,
+			typeArrayToJSON(s.Request),
+		)
+	}
+	return fmt.Sprintf("{\"name\":\"%v\",\"response\":%v,\"request\":%v}",
 		s.Name,
 		typeToJSON(s.Response),
 		typeArrayToJSON(s.Request),
 	)
-	return ret
 }
 
 func typeArrayToJSON(types []*serv.Type) string {
