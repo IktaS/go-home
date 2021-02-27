@@ -34,6 +34,10 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if !auth.Authenticate(newconn.HubCode) {
+		http.Error(w, "Wrong Hub Code", http.StatusBadRequest)
+		return
+	}
 	ip := net.ParseIP(r.RemoteAddr)
 	addr := &net.IPAddr{IP: ip, Zone: ""}
 	if newconn.ID != nil {
@@ -46,10 +50,6 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		a.Devices.Save(dev)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Device Reconnected to Hub!")
-		return
-	}
-	if !auth.Authenticate(newconn.HubCode) {
-		http.Error(w, "Wrong Hub Code", http.StatusBadRequest)
 		return
 	}
 	var DecompServ []byte
