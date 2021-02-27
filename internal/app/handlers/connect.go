@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 
@@ -38,6 +39,7 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		http.Error(w, "Wrong Hub Code", http.StatusBadRequest)
 		return
 	}
+	log.Println("New connection from :" + r.RemoteAddr)
 	ip := net.ParseIP(r.RemoteAddr)
 	addr := &net.IPAddr{IP: ip, Zone: ""}
 	if newconn.ID != nil {
