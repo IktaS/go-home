@@ -20,20 +20,23 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Works")
 }
 
-func getLocalIP() net.IP {
+func getLocalIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return nil
+		return ""
 	}
 	for _, address := range addrs {
 		// check the address type and if it is not a loopback the display it
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				return ipnet.IP
+				if os.Getenv("PORT") == "" {
+					return ipnet.IP.String()
+				}
+				return ipnet.IP.String() + ":" + os.Getenv("PORT")
 			}
 		}
 	}
-	return nil
+	return ""
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
@@ -83,7 +86,7 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	log.Println("App running in : " + srv.Addr)
-	log.Println("App local IP	: " + getLocalIP().String())
+	log.Println("App running in	:\t" + srv.Addr)
+	log.Println("App local IP	:\t" + getLocalIP())
 	log.Fatal(srv.ListenAndServe())
 }
