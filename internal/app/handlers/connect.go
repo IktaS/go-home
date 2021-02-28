@@ -23,6 +23,7 @@ newConnection defines a device connect JSON payload :
 */
 type newConnection struct {
 	ID        interface{} `json:"id,omitempty"`
+	Addr      string      `json:"addr,omitempty"`
 	HubCode   string      `json:"hub-code"`
 	Name      string      `json:"name"`
 	Serv      string      `json:"serv"`
@@ -41,9 +42,16 @@ func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
 		return
 	}
 	log.Println("New connection from :" + r.RemoteAddr)
-	ipStr := strings.Split(r.RemoteAddr, ":")
-	ip := net.ParseIP(ipStr[0])
-	addr := &net.IPAddr{IP: ip, Zone: ""}
+	var addr net.Addr
+	if newconn.Addr == "" {
+		ipStr := strings.Split(r.RemoteAddr, ":")
+		ip := net.ParseIP(ipStr[0])
+		addr = &net.IPAddr{IP: ip, Zone: ""}
+	} else {
+		ipStr := strings.Split(newconn.Addr, ":")
+		ip := net.ParseIP(ipStr[0])
+		addr = &net.IPAddr{IP: ip, Zone: ""}
+	}
 	if newconn.ID != nil {
 		dev, err := a.Devices.Get(newconn.ID)
 		if err != nil {
