@@ -15,8 +15,10 @@ Connection to `/connect` will be in the form of json:
   
 List of devices that's available will be able to be accessed in `/device`  
 
-`/device` will follow a rest-like form.  
-You can access each device with `/device/[id]`, and their respective service and message from `/device/[id]/service` and `/device/[id]/message`
+`/device` will follow a rest-like form.
+
+You can access each device with `/device/[id]`, and their respective service and message from `/device/[id]/service` and `/device/[id]/message`.
+
 And you can call a device service by hitting `/device/[id]/service/[service-name]?[service-params]` with `service-params` follows a URL query like input.
 
 An example of an IoT device implementing this can be seen in [this esp32 example](https://github.com/IktaS/esp32-go-home-module-example)
