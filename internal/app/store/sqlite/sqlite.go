@@ -219,8 +219,24 @@ func (p *Store) Init(config interface{}) error {
 	return nil
 }
 
+func deviceExist(db *sql.DB, id string) (bool, error) {
+	checkExist := `SELECT id FROM devices WHERE id = ?`
+	err := db.QueryRow(checkExist, id).Scan(&id)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return false, err
+		}
+		return false, nil
+	}
+	return true, nil
+}
+
 // Save saves a device to the SQLite store
 func (p *Store) Save(d *device.Device) error {
+	isExist, err := deviceExist(p.DB, d.ID.String())
+	if err != nil {
+		return err
+	}
 	ctx := context.Background()
 	tx, err := p.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -231,6 +247,13 @@ func (p *Store) Save(d *device.Device) error {
 	if err != nil {
 		tx.Rollback()
 		return err
+	}
+	if isExist {
+		err = tx.Commit()
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 	for _, m := range d.Messages {
 		if m == nil {
