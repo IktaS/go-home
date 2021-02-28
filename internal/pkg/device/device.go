@@ -1,12 +1,12 @@
 package device
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 
 	"github.com/IktaS/go-serv/pkg/serv"
 	"github.com/google/uuid"
@@ -61,10 +61,16 @@ func NewDevice(name string, address net.Addr, s []byte) (*Device, error) {
 // Call calls a service with a data
 func (d *Device) Call(service string, query string) ([]byte, error) {
 	connectionString := fmt.Sprintf("%v/%v?%v", d.Addr.String(), service, query)
+	u, err := url.Parse(connectionString)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.Scheme == "" || u.Host == "" || u.Path == "" {
+		return nil, fmt.Errorf("Invalid URL")
+	}
 	log.Println("calling to " + connectionString)
-	req, err := http.NewRequest("GET", connectionString, bytes.NewBufferString(connectionString))
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.Get(connectionString)
 	if err != nil {
 		return nil, err
 	}
