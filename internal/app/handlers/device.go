@@ -6,126 +6,134 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/IktaS/go-home/internal/app"
+	"github.com/IktaS/go-home/internal/app/store"
 	"github.com/IktaS/go-home/internal/pkg/device"
 	"github.com/IktaS/go-serv/pkg/serv"
 	"github.com/gorilla/mux"
 )
 
-func getAllDeviceHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
-	devs, err := a.Devices.GetAll()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	jsonString := "["
-	notFirst := false
-	for _, dev := range devs {
-		if notFirst {
-			jsonString += ","
-		}
-		notFirst = true
-		jsonString += DeviceToJSON(dev)
-	}
-	jsonString += "]"
-	fmt.Fprintf(w, jsonString)
-}
+// DeviceHandlers is exported handlers for device
+type DeviceHandlers struct{}
 
-func getDeviceHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
-	vars := mux.Vars(r)
-	val, ok := vars["id"]
-	if !ok {
-		http.Error(w, "No id", http.StatusBadRequest)
-		return
-	}
-	dev, err := a.Devices.Get(val)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, err.Error(), http.StatusNoContent)
+// HandleGetAllDevice handles getting all device
+func (*DeviceHandlers) HandleGetAllDevice(repo store.Repo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		devs, err := repo.GetAll()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		jsonString := "["
+		notFirst := false
+		for _, dev := range devs {
+			if notFirst {
+				jsonString += ","
+			}
+			notFirst = true
+			jsonString += DeviceToJSON(dev)
+		}
+		jsonString += "]"
+		fmt.Fprintf(w, jsonString)
 	}
-	fmt.Fprintf(w, DeviceToJSON(dev))
 }
 
-func getDeviceServiceHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
-	vars := mux.Vars(r)
-	val, ok := vars["id"]
-	if !ok {
-		http.Error(w, "No id", http.StatusBadRequest)
-		return
-	}
-	dev, err := a.Devices.Get(val)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, err.Error(), http.StatusNoContent)
+// HandleGetDevice handles getting device
+func (*DeviceHandlers) HandleGetDevice(repo store.Repo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		val, ok := vars["id"]
+		if !ok {
+			http.Error(w, "No id", http.StatusBadRequest)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprintf(w, ServiceToJSON(dev))
-}
-
-func getDeviceMessageHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
-	vars := mux.Vars(r)
-	val, ok := vars["id"]
-	if !ok {
-		http.Error(w, "No id", http.StatusBadRequest)
-		return
-	}
-	dev, err := a.Devices.Get(val)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, err.Error(), http.StatusNoContent)
+		dev, err := repo.Get(val)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, err.Error(), http.StatusNoContent)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		fmt.Fprintf(w, DeviceToJSON(dev))
 	}
-	fmt.Fprintf(w, MessagesToJSON(dev))
 }
 
-func deviceServiceCallHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
-	vars := mux.Vars(r)
-	id, ok := vars["id"]
-	if !ok {
-		http.Error(w, "No id", http.StatusBadRequest)
-		return
-	}
-	dev, err := a.Devices.Get(id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, err.Error(), http.StatusNoContent)
+// HandleGetDeviceService handles getting device service
+func (*DeviceHandlers) HandleGetDeviceService(repo store.Repo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		val, ok := vars["id"]
+		if !ok {
+			http.Error(w, "No id", http.StatusBadRequest)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		dev, err := repo.Get(val)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, err.Error(), http.StatusNoContent)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintf(w, ServiceToJSON(dev))
 	}
-	service, ok := vars["service"]
-	if !ok {
-		http.Error(w, "No service", http.StatusBadRequest)
-		return
-	}
-	body, err := dev.Call(service, r.URL.RawQuery)
-	if err != nil {
-		http.Error(w, "Cannot Call Device", http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, string(body))
 }
 
-// DeviceHandlers add routes to handle device operation, getting, updating and such
-func DeviceHandlers(r *mux.Router, a *app.App) {
-	s := r.PathPrefix("/device").Subrouter()
-	s.HandleFunc("/", appHandlerWrapper(getAllDeviceHandler, a)).Methods("GET")
-	s.HandleFunc("/{id}", appHandlerWrapper(getDeviceHandler, a)).Methods("GET")
-	s.HandleFunc("/{id}/service", appHandlerWrapper(getDeviceServiceHandler, a)).Methods("GET")
-	s.HandleFunc("/{id}/service/{service}", appHandlerWrapper(deviceServiceCallHandler, a)).Methods("GET")
-	s.HandleFunc("/{id}/message", appHandlerWrapper(getDeviceMessageHandler, a)).Methods("GET")
+// HandleGetDeviceMessage handles getting device message
+func (*DeviceHandlers) HandleGetDeviceMessage(repo store.Repo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		val, ok := vars["id"]
+		if !ok {
+			http.Error(w, "No id", http.StatusBadRequest)
+			return
+		}
+		dev, err := repo.Get(val)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, err.Error(), http.StatusNoContent)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintf(w, MessagesToJSON(dev))
+	}
+}
+
+// HandleDeviceServiceCall handles callign a device service
+func (*DeviceHandlers) HandleDeviceServiceCall(repo store.Repo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		id, ok := vars["id"]
+		if !ok {
+			http.Error(w, "No id", http.StatusBadRequest)
+			return
+		}
+		dev, err := repo.Get(id)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, err.Error(), http.StatusNoContent)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		service, ok := vars["service"]
+		if !ok {
+			http.Error(w, "No service", http.StatusBadRequest)
+			return
+		}
+		body, err := dev.Call(service, r.URL.RawQuery)
+		if err != nil {
+			http.Error(w, "Cannot Call Device", http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, string(body))
+	}
 }
 
 //DeviceToJSON returns a json string that represent the device

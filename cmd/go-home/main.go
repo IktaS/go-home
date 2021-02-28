@@ -1,24 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/IktaS/go-home/internal/app"
-	"github.com/IktaS/go-home/internal/app/handlers"
+	"github.com/IktaS/go-home/internal/app/store"
 	"github.com/IktaS/go-home/internal/app/store/sqlite"
-	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
-
-//HomeHandler handles home
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Works")
-}
 
 func getLocalIP() string {
 	addrs, err := net.InterfaceAddrs()
@@ -68,16 +60,16 @@ func loadEnv() {
 	}
 }
 
-func main() {
-	loadEnv()
-	repo, err := sqlite.NewSQLiteStore("sqlite.db")
-	if err != nil {
-		panic(err)
-	}
-	a := app.NewApp(repo)
-	r := mux.NewRouter().StrictSlash(true)
-	handlers.ConnectHandlers(r, a)
-	handlers.DeviceHandlers(r, a)
+//Server defines what the server have
+type Server struct {
+	store store.Repo
+	srv   *http.Server
+}
+
+//NewServer initialize a new server
+func NewServer() *Server {
+	s := &Server{}
+	r := s.routes()
 	r.Use(loggingMiddleware)
 	srv := &http.Server{
 		Handler: r,
@@ -86,7 +78,19 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	log.Println("App running in	:\t" + srv.Addr)
+	s.srv = srv
+	return s
+}
+
+func main() {
+	loadEnv()
+	repo, err := sqlite.NewSQLiteStore("sqlite.db")
+	if err != nil {
+		panic(err)
+	}
+	server := NewServer()
+	server.store = repo
+	log.Println("App running in	:\t" + server.srv.Addr)
 	log.Println("App local IP	:\t" + getLocalIP())
-	log.Fatal(srv.ListenAndServe())
+	log.Fatal(server.srv.ListenAndServe())
 }

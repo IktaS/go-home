@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/IktaS/go-home/internal/app"
+	"github.com/IktaS/go-home/internal/app/store"
 	"github.com/IktaS/go-home/internal/pkg/auth"
 	"github.com/IktaS/go-home/internal/pkg/device"
-	"github.com/gorilla/mux"
 )
+
+//ConnectionHandlers is handlers for connection
+type ConnectionHandlers struct{}
 
 /*
 newConnection defines a device connect JSON payload :
@@ -30,73 +32,58 @@ type newConnection struct {
 	Algorithm string      `json:"algo"`
 }
 
-func connectHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
-	var newconn newConnection
-	err := json.NewDecoder(r.Body).Decode(&newconn)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if !auth.Authenticate(newconn.HubCode) {
-		http.Error(w, "Wrong Hub Code", http.StatusBadRequest)
-		return
-	}
-	log.Println("New connection from :" + r.RemoteAddr)
-	var addr net.Addr
-	if newconn.Addr == "" {
-		ipStr := strings.Split(r.RemoteAddr, ":")
-		ip := net.ParseIP(ipStr[0])
-		addr = &net.IPAddr{IP: ip, Zone: ""}
-	} else {
-		ipStr := strings.Split(newconn.Addr, ":")
-		ip := net.ParseIP(ipStr[0])
-		addr = &net.IPAddr{IP: ip, Zone: ""}
-	}
-	if newconn.ID != nil {
-		dev, err := a.Devices.Get(newconn.ID)
+// HandleConnect handles connecting a device to the hub
+func (*ConnectionHandlers) HandleConnect(repo store.Repo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var newconn newConnection
+		err := json.NewDecoder(r.Body).Decode(&newconn)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		dev.Addr = addr
-		a.Devices.Save(dev)
+		if !auth.Authenticate(newconn.HubCode) {
+			http.Error(w, "Wrong Hub Code", http.StatusBadRequest)
+			return
+		}
+		log.Println("New connection from :\t" + r.RemoteAddr)
+		var addr net.Addr
+		if newconn.Addr == "" {
+			ipStr := strings.Split(r.RemoteAddr, ":")
+			ip := net.ParseIP(ipStr[0])
+			addr = &net.IPAddr{IP: ip, Zone: ""}
+		} else {
+			ipStr := strings.Split(newconn.Addr, ":")
+			ip := net.ParseIP(ipStr[0])
+			addr = &net.IPAddr{IP: ip, Zone: ""}
+		}
+		if newconn.ID != nil {
+			dev, err := repo.Get(newconn.ID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			dev.Addr = addr
+			repo.Save(dev)
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "Device Reconnected to Hub!")
+			return
+		}
+		var DecompServ []byte
+		switch algo := newconn.Algorithm; algo {
+		case "none":
+			DecompServ = []byte(newconn.Serv)
+		}
+		dev, err := device.NewDevice(newconn.Name, addr, DecompServ)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		err = repo.Save(dev)
+		if err != nil {
+			http.Error(w, "Error Saving New Device \n"+err.Error(), http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "Device Reconnected to Hub!")
-		return
+		fmt.Fprintf(w, dev.ID.String())
 	}
-	var DecompServ []byte
-	switch algo := newconn.Algorithm; algo {
-	case "none":
-		DecompServ = []byte(newconn.Serv)
-	}
-	dev, err := device.NewDevice(newconn.Name, addr, DecompServ)
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	err = a.Devices.Save(dev)
-	if err != nil {
-		http.Error(w, "Error Saving New Device \n"+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, dev.ID.String())
-}
-
-/*
-NewServiceCall defines a service call JSON payload :
-	DeviceID `device-id` 	: The ID of the device you want to call a service on
-	Service	 `service`		: The service name that they want to call
-	Data 	 `data`			: A json object that has all the data you want to pass to the service, it's in "name" : "value" format
-*/
-type newServiceCall struct {
-	DeviceID string                 `json:"device-id"`
-	Service  string                 `json:"service"`
-	Data     map[string]interface{} `json:"data"`
-}
-
-// ConnectHandlers add routes to handle connecting and calling endpoints
-func ConnectHandlers(r *mux.Router, a *app.App) {
-	s := r.NewRoute().Subrouter()
-	s.HandleFunc("/connect", appHandlerWrapper(connectHandler, a))
 }
