@@ -123,9 +123,9 @@ func DeviceHandlers(r *mux.Router, a *app.App) {
 	s := r.PathPrefix("/device").Subrouter()
 	s.HandleFunc("/", appHandlerWrapper(getAllDeviceHandler, a)).Methods("GET")
 	s.HandleFunc("/{id}", appHandlerWrapper(getDeviceHandler, a)).Methods("GET")
-	s.HandleFunc("/{id}/services", appHandlerWrapper(getDeviceServiceHandler, a)).Methods("GET")
-	s.HandleFunc("/{id}/services/{service}", appHandlerWrapper(deviceServiceCallHandler, a)).Methods("GET")
-	s.HandleFunc("/{id}/messages", appHandlerWrapper(getDeviceMessageHandler, a)).Methods("GET")
+	s.HandleFunc("/{id}/service", appHandlerWrapper(getDeviceServiceHandler, a)).Methods("GET")
+	s.HandleFunc("/{id}/service/{service}", appHandlerWrapper(deviceServiceCallHandler, a)).Methods("GET")
+	s.HandleFunc("/{id}/message", appHandlerWrapper(getDeviceMessageHandler, a)).Methods("GET")
 }
 
 //DeviceToJSON returns a json string that represent the device
