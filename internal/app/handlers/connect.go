@@ -87,30 +87,8 @@ type newServiceCall struct {
 	Data     map[string]interface{} `json:"data"`
 }
 
-func serviceHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
-	var newcall newServiceCall
-	err := json.NewDecoder(r.Body).Decode(&newcall)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	dev, err := a.Devices.Get(newcall.DeviceID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	res, err := dev.Call(newcall.Service, newcall.Data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, string(res))
-}
-
 // ConnectHandlers add routes to handle connecting and calling endpoints
 func ConnectHandlers(r *mux.Router, a *app.App) {
 	s := r.NewRoute().Subrouter()
 	s.HandleFunc("/connect", appHandlerWrapper(connectHandler, a))
-	s.HandleFunc("/call", appHandlerWrapper(serviceHandler, a))
 }

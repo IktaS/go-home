@@ -2,7 +2,6 @@ package device
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -60,21 +59,16 @@ func NewDevice(name string, address net.Addr, s []byte) (*Device, error) {
 }
 
 // Call calls a service with a data
-func (d *Device) Call(service string, data map[string]interface{}) ([]byte, error) {
-	jsondata, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-	connectionString := fmt.Sprintf("%v/%v", d.Addr.String(), service)
+func (d *Device) Call(service string, query string) ([]byte, error) {
+	connectionString := fmt.Sprintf("%v/%v?%v", d.Addr.String(), service, query)
 	log.Println("calling to " + connectionString)
-	req, err := http.NewRequest("POST", connectionString, bytes.NewBuffer(jsondata))
+	req, err := http.NewRequest("GET", connectionString, bytes.NewBufferString(connectionString))
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

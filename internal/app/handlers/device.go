@@ -88,13 +88,44 @@ func getDeviceMessageHandler(w http.ResponseWriter, r *http.Request, a *app.App)
 	fmt.Fprintf(w, MessagesToJSON(dev))
 }
 
+func deviceServiceCallHandler(w http.ResponseWriter, r *http.Request, a *app.App) {
+	vars := mux.Vars(r)
+	id, ok := vars["id"]
+	if !ok {
+		http.Error(w, "No id", http.StatusBadRequest)
+		return
+	}
+	dev, err := a.Devices.Get(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, err.Error(), http.StatusNoContent)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	service, ok := vars["service"]
+	if !ok {
+		http.Error(w, "No service", http.StatusBadRequest)
+		return
+	}
+	body, err := dev.Call(service, r.URL.RawQuery)
+	if err != nil {
+		http.Error(w, "Cannot Call Device", http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, string(body))
+}
+
 // DeviceHandlers add routes to handle device operation, getting, updating and such
 func DeviceHandlers(r *mux.Router, a *app.App) {
 	s := r.PathPrefix("/device").Subrouter()
-	s.HandleFunc("/", appHandlerWrapper(getAllDeviceHandler, a))
-	s.HandleFunc("/{id}", appHandlerWrapper(getDeviceHandler, a))
-	s.HandleFunc("/{id}/services", appHandlerWrapper(getDeviceServiceHandler, a))
-	s.HandleFunc("/{id}/messages", appHandlerWrapper(getDeviceMessageHandler, a))
+	s.HandleFunc("/", appHandlerWrapper(getAllDeviceHandler, a)).Methods("GET")
+	s.HandleFunc("/{id}", appHandlerWrapper(getDeviceHandler, a)).Methods("GET")
+	s.HandleFunc("/{id}/services", appHandlerWrapper(getDeviceServiceHandler, a)).Methods("GET")
+	s.HandleFunc("/{id}/services/{service}", appHandlerWrapper(deviceServiceCallHandler, a)).Methods("GET")
+	s.HandleFunc("/{id}/messages", appHandlerWrapper(getDeviceMessageHandler, a)).Methods("GET")
 }
 
 //DeviceToJSON returns a json string that represent the device
