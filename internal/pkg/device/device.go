@@ -60,7 +60,7 @@ func NewDevice(name string, address net.Addr, s []byte) (*Device, error) {
 
 // Call calls a service with a data
 func (d *Device) Call(service string, query string) ([]byte, error) {
-	connectionString := fmt.Sprintf("%v/%v?%v", d.Addr.String(), service, query)
+	connectionString := fmt.Sprintf("http://%v/%v?%v", d.Addr.String(), service, query)
 	u, err := url.Parse(connectionString)
 	if err != nil {
 		return nil, err
