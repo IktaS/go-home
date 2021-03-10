@@ -20,7 +20,7 @@ func TestNewDevice(t *testing.T) {
 			Name:    "Default test",
 			DevName: "Device1",
 			input: []byte(`
-				message TestMessage{string TestString;};service TestService(TestMessage):string;
+				message TestMessage{string TestString;};def inbound TestService(TestMessage):string;
 			`),
 			expected: &Device{
 				Name: "Device1",
@@ -30,7 +30,9 @@ func TestNewDevice(t *testing.T) {
 				},
 				Services: []*serv.Service{
 					{
-						Name: "TestService",
+						Name:     "TestService",
+						Inbound:  true,
+						Outbound: false,
 						Request: []*serv.Type{
 							{
 								Reference: "TestMessage",
@@ -91,7 +93,7 @@ func TestNewDevice(t *testing.T) {
 			Name:    "One Service",
 			DevName: "Device1",
 			input: []byte(`
-				service click();
+				def outbound click();
 			`),
 			expected: &Device{
 				Name: "Device1",
@@ -101,7 +103,9 @@ func TestNewDevice(t *testing.T) {
 				},
 				Services: []*serv.Service{
 					{
-						Name: "click",
+						Name:     "click",
+						Inbound:  false,
+						Outbound: true,
 					},
 				},
 			},

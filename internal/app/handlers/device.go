@@ -223,13 +223,17 @@ func serviceArrayToJSON(services []*serv.Service) string {
 
 func serviceToJSON(s *serv.Service) string {
 	if s.Response == nil {
-		return fmt.Sprintf("{\"name\":\"%v\",\"request\":%v}",
+		return fmt.Sprintf("{\"name\":\"%v\",\"request\":%v,\"Inbound\":%v,\"Outbound\":%v}",
 			s.Name,
 			typeArrayToJSON(s.Request),
+			s.Inbound,
+			s.Outbound,
 		)
 	}
-	return fmt.Sprintf("{\"name\":\"%v\",\"response\":%v,\"request\":%v}",
+	return fmt.Sprintf("{\"name\":\"%v\",\"Inbound\":%v,\"Outbound\":%v,\"response\":%v,\"request\":%v}",
 		s.Name,
+		s.Inbound,
+		s.Outbound,
 		typeToJSON(s.Response),
 		typeArrayToJSON(s.Request),
 	)
