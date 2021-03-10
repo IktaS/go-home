@@ -1,7 +1,7 @@
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
 github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
-github.com/IktaS/go-serv v0.2.0-beta h1:9oL91ck7uKOuzKgs8U8j1sadOGLQJlTKINCjdH2AgHA=
-github.com/IktaS/go-serv v0.2.0-beta/go.mod h1:VMi0pi9Dx1U5tB7+xShOL5hYygqnXf6XpKLe5e1Pbmk=
+github.com/IktaS/go-serv v0.3.1 h1:e7OUNO4Pg7MMgljzvWMYQ+Hcfdl07h0F0V+VrGTW4f4=
+github.com/IktaS/go-serv v0.3.1/go.mod h1:VMi0pi9Dx1U5tB7+xShOL5hYygqnXf6XpKLe5e1Pbmk=
 github.com/alecthomas/participle/v2 v2.0.0-alpha3 h1:7aeHdGgRXADjrDEHwCpXiMMZqppOw2dpQfmVTyBN5cY=
 github.com/alecthomas/participle/v2 v2.0.0-alpha3/go.mod h1:Z1zPLDbcGsVsBYsThKXY00i84575bN/nMczzIrU4rWU=
 github.com/alecthomas/repr v0.0.0-20181024024818-d37bc2a10ba1 h1:GDQdwm/gAcJcLAKQQZGOJ4knlw+7rfEQQcmwTbt4p5E=

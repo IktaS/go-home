@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func readService(input []byte) (*serv.Serv, error) {
+func readService(input []byte) (*serv.Gserv, error) {
 	parser, err := serv.NewServParser()
 	if err != nil {
 		return nil, err

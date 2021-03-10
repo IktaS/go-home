@@ -69,6 +69,10 @@ func TestStore_Save(t *testing.T) {
 					DB:       db,
 				}
 
+				mock.ExpectQuery(
+					regexp.QuoteMeta("SELECT id FROM devices WHERE id = ?"),
+				).WithArgs(d.ID.String()).WillReturnRows(&sqlmock.Rows{})
+
 				mock.ExpectBegin()
 
 				mock.ExpectExec(
@@ -89,7 +93,7 @@ func TestStore_Save(t *testing.T) {
 
 				mock.ExpectExec(
 					"INSERT OR IGNORE INTO services",
-				).WithArgs(d.ID.String(), "TestService", 1).WillReturnResult(sqlmock.NewResult(1, 1))
+				).WithArgs(d.ID.String(), "TestService", 1, 1).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectExec(
 					"INSERT OR IGNORE INTO service_request",
@@ -111,7 +115,9 @@ func TestStore_Save(t *testing.T) {
 				},
 				Services: []*serv.Service{
 					{
-						Name: "TestService",
+						Name:     "TestService",
+						Inbound:  true,
+						Outbound: false,
 						Request: []*serv.Type{
 							{
 								Reference: "TestMessage",
@@ -152,6 +158,10 @@ func TestStore_Save(t *testing.T) {
 					DB:       db,
 				}
 
+				mock.ExpectQuery(
+					regexp.QuoteMeta("SELECT id FROM devices WHERE id = ?"),
+				).WithArgs(d.ID.String()).WillReturnRows(&sqlmock.Rows{})
+
 				mock.ExpectBegin()
 
 				mock.ExpectExec(
@@ -160,7 +170,7 @@ func TestStore_Save(t *testing.T) {
 
 				mock.ExpectExec(
 					"INSERT OR IGNORE INTO services",
-				).WithArgs(d.ID.String(), "click").WillReturnResult(sqlmock.NewResult(1, 1))
+				).WithArgs(d.ID.String(), "click", 0).WillReturnResult(sqlmock.NewResult(1, 1))
 
 				mock.ExpectCommit()
 
@@ -178,7 +188,57 @@ func TestStore_Save(t *testing.T) {
 				},
 				Services: []*serv.Service{
 					{
-						Name: "click",
+						Name:     "click",
+						Inbound:  false,
+						Outbound: true,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Test device exist",
+			setup: func(t *testing.T, d *device.Device) (*Store, sqlmock.Sqlmock) {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				s := &Store{
+					FileName: "test_sqlite.db",
+					DB:       db,
+				}
+
+				deviceRows := sqlmock.NewRows([]string{"id"}).
+					AddRow(d.ID.String())
+				mock.ExpectQuery(
+					regexp.QuoteMeta("SELECT id FROM devices WHERE id = ?"),
+				).WithArgs(d.ID.String()).WillReturnRows(deviceRows)
+
+				mock.ExpectBegin()
+
+				mock.ExpectExec(
+					"INSERT OR REPLACE INTO devices",
+				).WithArgs(d.ID.String(), d.Name, d.Addr.String()).WillReturnResult(sqlmock.NewResult(1, 1))
+
+				mock.ExpectCommit()
+
+				return s, mock
+			},
+			teardown: func(t *testing.T, s *Store) {
+				s.DB.Close()
+			},
+			input: &device.Device{
+				ID:   uuid.New(),
+				Name: "Device1",
+				Addr: &net.TCPAddr{
+					IP:   net.IPv4(127, 0, 0, 1),
+					Port: 80,
+				},
+				Services: []*serv.Service{
+					{
+						Name:     "click",
+						Inbound:  false,
+						Outbound: true,
 					},
 				},
 			},
@@ -251,8 +311,8 @@ func TestStore_Get(t *testing.T) {
 				serviceID := 1
 				responseID := 1
 
-				serviceRows := sqlmock.NewRows([]string{"id", "device_id", "name", "response_id"}).
-					AddRow(serviceID, deviceID, "TestService", responseID)
+				serviceRows := sqlmock.NewRows([]string{"id", "device_id", "name", "is_inbound", "response_id"}).
+					AddRow(serviceID, deviceID, "TestService", 1, responseID)
 				mock.ExpectQuery(
 					regexp.QuoteMeta("SELECT * FROM services WHERE device_id"),
 				).WithArgs(deviceID).WillReturnRows(serviceRows)
@@ -282,7 +342,9 @@ func TestStore_Get(t *testing.T) {
 				},
 				Services: []*serv.Service{
 					{
-						Name: "TestService",
+						Name:     "TestService",
+						Inbound:  true,
+						Outbound: false,
 						Request: []*serv.Type{
 							{
 								Reference: "TestMessage",

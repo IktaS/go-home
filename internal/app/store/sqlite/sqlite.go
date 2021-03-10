@@ -146,6 +146,7 @@ func (p *Store) Init(config interface{}) error {
 	createServicesTableSQL := `CREATE TABLE IF NOT EXISTS services(
 		"id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		"device_id" TEXT NOT NULL,
+		"is_inbound" INTEGER,
 		"name" TEXT,
 		"response_id" INTEGER DEFAULT NULL,
 		FOREIGN KEY (device_id) REFERENCES devices (id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -323,6 +324,16 @@ func insertMessageField(ctx context.Context, tx *sql.Tx, mesID int64, f *serv.Fi
 	return nil
 }
 
+func serviceDirectionToInt(s *serv.Service) int {
+	if s.Inbound {
+		return 1
+	}
+	if s.Outbound {
+		return 0
+	}
+	return -1
+}
+
 func insertService(ctx context.Context, tx *sql.Tx, devID uuid.UUID, s *serv.Service) error {
 	if s == nil {
 		return nil
@@ -330,8 +341,8 @@ func insertService(ctx context.Context, tx *sql.Tx, devID uuid.UUID, s *serv.Ser
 	var serviceID int64
 	if s.Response != nil {
 		responseID, err := insertServiceResponse(ctx, tx, s.Response)
-		insertServiceSQL := "INSERT OR IGNORE INTO services(device_id, name, response_id) VALUES(?,?,?);"
-		row, err := tx.ExecContext(ctx, insertServiceSQL, devID.String(), s.Name, responseID)
+		insertServiceSQL := "INSERT OR IGNORE INTO services(device_id, name, is_inbound, response_id) VALUES(?,?,?,?);"
+		row, err := tx.ExecContext(ctx, insertServiceSQL, devID.String(), s.Name, serviceDirectionToInt(s), responseID)
 		if err != nil {
 			return err
 		}
@@ -341,8 +352,8 @@ func insertService(ctx context.Context, tx *sql.Tx, devID uuid.UUID, s *serv.Ser
 			return err
 		}
 	} else {
-		insertServiceSQL := "INSERT OR IGNORE INTO services(device_id, name) VALUES(?,?);"
-		row, err := tx.ExecContext(ctx, insertServiceSQL, devID.String(), s.Name)
+		insertServiceSQL := "INSERT OR IGNORE INTO services(device_id, name, is_inbound) VALUES(?,?,?);"
+		row, err := tx.ExecContext(ctx, insertServiceSQL, devID.String(), s.Name, serviceDirectionToInt(s))
 		if err != nil {
 			return err
 		}
@@ -566,8 +577,9 @@ func serviceRowsToServices(db *sql.DB, rows *sql.Rows) ([]*serv.Service, error) 
 		var id int
 		var deviceID string
 		var name string
+		var isInbound int
 		var responseID sql.NullInt64
-		err := rows.Scan(&id, &deviceID, &name, &responseID)
+		err := rows.Scan(&id, &deviceID, &name, &isInbound, &responseID)
 		if err != nil {
 			return nil, err
 		}
@@ -588,6 +600,8 @@ func serviceRowsToServices(db *sql.DB, rows *sql.Rows) ([]*serv.Service, error) 
 		}
 		services = append(services, &serv.Service{
 			Name:     name,
+			Inbound:  (isInbound == 1),
+			Outbound: (isInbound == 0),
 			Request:  requests,
 			Response: response,
 		})
