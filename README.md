@@ -1,5 +1,5 @@
 # go-home
-#[This project is now on hold for architectural restructuring]
+### [This project is now on hold for architectural restructuring]
 go-home is a home IoT server that allows devices to connect to hub and dynamically add their services to be able to be controlled from the hub
 
 The go-home uses sqlite as persistent storage  
